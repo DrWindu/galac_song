@@ -1,7 +1,7 @@
 /*
- *  Copyright (C) 2015, 2016 Simon Boyé
+ *  Copyright (C) 2015, 2017 the authors (see AUTHORS)
  *
- *  This file is part of lair.
+ *  This file is part of Draklia's ld39.
  *
  *  lair is free software: you can redistribute it and/or modify it
  *  under the terms of the GNU General Public License as published by
@@ -19,8 +19,8 @@
  */
 
 
-#ifndef _LAIR_DEMO_TEMPLATE_MAIN_STATE_H
-#define _LAIR_DEMO_TEMPLATE_MAIN_STATE_H
+#ifndef LD39_MAIN_STATE_H_
+#define LD39_MAIN_STATE_H_
 
 
 #include <lair/core/signal.h>
@@ -44,6 +44,29 @@ using namespace lair;
 
 
 class Game;
+
+enum {
+	TILE_SIZE      = 48,
+	TICKS_PER_SEC  = 60,
+	FRAMES_PER_SEC = 60,
+};
+
+extern const float TICK_LENGTH_IN_SEC;
+
+enum HitFlags {
+	HIT_SOLID     = 0x01,
+	HIT_PLAYER    = 0x02,
+	HIT_CHARACTER = 0x04,
+	HIT_TRIGGER   = 0x08,
+};
+
+enum Direction {
+	DIR_NONE  = 0x00,
+	DIR_RIGHT = 0x01,
+	DIR_UP    = 0x02,
+	DIR_LEFT  = 0x04,
+	DIR_DOWN  = 0x08,
+};
 
 
 class MainState : public GameState {
@@ -92,11 +115,33 @@ protected:
 	unsigned    _fpsCount;
 
 	Input*      _quitInput;
+	Input*      _leftInput;
+	Input*      _rightInput;
+	Input*      _jumpInput;
+	Input*      _dashInput;
 
 	TileMapAspectSP _tileMap;
 
-	EntityRef   _modelRoot;
+	EntityRef   _models;
+
+	EntityRef   _playerModel;
+	Vector2     _playerVelocity;
+	Direction   _playerMoveDir;
+	int         _jumpDuration;
+	int         _jumpCount;
+	Direction   _wallJumpDir;
+	int         _dashDuration;
+	int         _dashCount;
+	Direction   _playerDir;
+	unsigned    _playerAnim;
+	float       _playerAnimTime;
+
 	EntityRef   _tileLayer;
+
+	EntityRef   _scene;
+	EntityRef   _player;
+
+	EntityRef   _gui;
 };
 
 

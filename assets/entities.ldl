@@ -1,20 +1,30 @@
-sprite = {
-	transform = [ translate(120, 90, .5), rotate(45), scale(.5) ]
-	sprite = {
-		texture       = "lair.png"
-		tile_grid     = Vector(3, 2)
-		tile_index    = 3
-		anchor        = Vector(0.5, 0.5)
-		texture_flags = "nearest"
+__models__ = {
+	enabled = false
+	children = {
+		player_model = {
+			transform = translate(0, 0, 0.5)
+			sprite = {
+				texture       = "character.png"
+				tile_grid     = Vector(8, 8)
+				tile_index    = 0
+				anchor        = Vector(0.5, 0)
+				texture_flags = "bilinear_no_mipmap | clamp"
+			}
+			collision = {
+				shape       = ABox{ min = Vector(-24, 0), size = Vector(48, 48) }
+				// 1: solid, 2: player, 4: character
+				hit_mask    = 0x07
+				// ignore intersection with other characters
+				ignore_mask = 0x04
+			}
+		}
 	}
 }
 
-text = {
-	transform = translate(160, 90, .5)
-	text = {
-		font   = "droid_sans_24.json"
-		text   = "Lair\nEngine\n.$.¢.€.𐍈.\névènement"
-		color  = Vector(0.75, 0.1, 0.1, 1)
-		anchor = Vector(0, 0.5)
-	}
+scene = {
+	transform = translate(0, 0, 0)
+}
+
+gui = {
+	transform = translate(0, 0, 0)
 }

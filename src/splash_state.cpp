@@ -1,7 +1,7 @@
 /*
- *  Copyright (C) 2015, 2016 Simon Boyé
+ *  Copyright (C) 2015, 2017 the authors (see AUTHORS)
  *
- *  This file is part of lair.
+ *  This file is part of Draklia's ld39.
  *
  *  lair is free software: you can redistribute it and/or modify it
  *  under the terms of the GNU General Public License as published by
@@ -79,7 +79,7 @@ void SplashState::initialize() {
 	_inputs.mapScanCode(_skipInput, SDL_SCANCODE_ESCAPE);
 
 	_splash = _entities.createEntity(_entities.root(), "splash_screen");
-	_splash.place(Vector3(0, 0, 0));
+	_splash.placeAt(Vector3(0, 0, 0));
 
 //	EntityRef text = loadEntity("text.json", _entities.root());
 //	text.place(Vector3(160, 90, .5));

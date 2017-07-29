@@ -1,7 +1,7 @@
 /*
- *  Copyright (C) 2016 Simon Boyé
+ *  Copyright (C) 2015, 2017 the authors (see AUTHORS)
  *
- *  This file is part of lair.
+ *  This file is part of Draklia's ld39.
  *
  *  lair is free software: you can redistribute it and/or modify it
  *  under the terms of the GNU General Public License as published by
@@ -30,8 +30,8 @@ int main(int argc, char** argv) {
 	Game game(argc, argv);
 	game.initialize();
 
-	game.setNextState(game.splashState());
-//	game.setNextState(game.mainState());
+//	game.setNextState(game.splashState());
+	game.setNextState(game.mainState());
 	game.run();
 
 	game.shutdown();
