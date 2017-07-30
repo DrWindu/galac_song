@@ -69,6 +69,9 @@ protected:
 
 	std::unique_ptr<MainState> _mainState;
 	std::unique_ptr<SplashState> _splashState;
+
+	Path   _levelPath;
+	String _spawnName;
 };
 
 

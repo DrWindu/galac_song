@@ -86,10 +86,12 @@ public:
 	void start(const std::string& spawn);
 	void stop();
 
+	void spawnPlayer(const std::string& spawn);
+
 	Box2 objectBox(const Json::Value& obj) const;
 
 	EntityRef createLayer(unsigned index, const char* name);
-//	EntityRef createTrigger(const Json::Value& obj, const std::string& name);
+	EntityRef createTrigger(const Json::Value& obj, const std::string& name);
 //	EntityRef createItem(const Json::Value& obj, const std::string& name);
 //	EntityRef createDoor(const Json::Value& obj, const std::string& name);
 //	EntityRef createEntity(const Json::Value& obj, const std::string& name);
@@ -100,9 +102,8 @@ public:
 	EntityRef   entity(const std::string& name);
 	EntityRange entities(const std::string& name);
 
-	void updateDepth(EntityRef entity) const;
-	void updateDepth();
-	void computeCollisions();
+//	void updateDepth(EntityRef entity) const;
+//	void updateDepth();
 
 protected:
 	MainState* _mainState;

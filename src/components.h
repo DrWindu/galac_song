@@ -1,7 +1,7 @@
 /*
- *  Copyright (C) 2016-2017 the authors (see AUTHORS)
+ *  Copyright (C) 2015, 2017 the authors (see AUTHORS)
  *
- *  This file is part of ld36.
+ *  This file is part of Draklia's ld39.
  *
  *  lair is free software: you can redistribute it and/or modify it
  *  under the terms of the GNU General Public License as published by
@@ -19,8 +19,8 @@
  */
 
 
-#ifndef COMPONENTS_H
-#define COMPONENTS_H
+#ifndef LD_39_COMPONENTS_H_
+#define LD_39_COMPONENTS_H_
 
 
 #include <map>
@@ -37,6 +37,7 @@
 using namespace lair;
 
 class Level;
+class MainState;
 
 enum DirFlags {
 	DIR_NONE  = 0x00,
@@ -154,17 +155,14 @@ public:
 
 class CharacterComponentManager : public DenseComponentManager<CharacterComponent> {
 public:
-	CharacterComponentManager(CollisionComponentManager* collisions);
+	CharacterComponentManager(MainState* mainState);
 	virtual ~CharacterComponentManager() = default;
-
-	inline void setLevel(Level* level) { _level = level; }
 
 	void updatePhysics();
 	void processCollisions();
 
 public:
-	CollisionComponentManager* _collisions;
-	Level* _level;
+	MainState* _mainState;
 };
 
 

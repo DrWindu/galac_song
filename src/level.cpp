@@ -27,11 +27,15 @@
 
 
 bool isSolid(TileMap::TileIndex tile) {
-//	tile -= 1;
-//	unsigned x = tile % TILE_SET_WIDTH;
-//	unsigned y = tile / TILE_SET_WIDTH;
-//	return (y > 2 && y < 9);
-	return tile == 1;
+	if(tile == 0)
+		return false;
+
+	tile -= 1;
+	unsigned x = tile % TILE_SET_WIDTH;
+	unsigned y = tile / TILE_SET_WIDTH;
+	if(x < 4 && y < 8)
+		return x < 1 || x >= 3 || y < 1 || y >= 3;
+	return x >= 5 && x < 8 && y >= 1 && y < 4;
 }
 
 
@@ -39,39 +43,6 @@ Vector2i cellCoord(const Vector2& pos, float height) {
 	return Vector2i(pos(0) / TILE_SIZE, height - pos(1) / TILE_SIZE);
 }
 
-
-//void updatePenetration(CollisionComponent* comp, const Box2& objBox, const Box2& otherBox) {
-//	Vector2 offset = otherBox.center() - objBox.center();
-//	Vector2 hsizes = (objBox.sizes() + otherBox.sizes()) / 2;
-
-//	Box2 inter = objBox.intersection(otherBox);
-
-//	bool hitX = objBox  .max()(0) > otherBox.min()(0)
-//	         && otherBox.max()(0) > objBox  .min()(0);
-//	bool hitY = objBox  .max()(1) > otherBox.min()(1)
-//	         && otherBox.max()(1) > objBox  .min()(1);
-
-//	if(hitY && (inter.isEmpty() || inter.sizes()(0) < inter.sizes()(1))) {
-//		if(offset(0) < 0) {
-//			float p = hsizes(0) + offset(0);
-//			comp->setPenetration(LEFT,  std::max(comp->penetration(LEFT),  p));
-//		}
-//		else {
-//			float p = hsizes(0) - offset(0);
-//			comp->setPenetration(RIGHT, std::max(comp->penetration(RIGHT), p));
-//		}
-//	}
-//	if(hitX && (inter.isEmpty() || inter.sizes()(1) < inter.sizes()(0))) {
-//		if(offset(1) < 0) {
-//			float p = hsizes(1) + offset(1);
-//			comp->setPenetration(DOWN,  std::max(comp->penetration(DOWN),  p));
-//		}
-//		else {
-//			float p = hsizes(1) - offset(1);
-//			comp->setPenetration(UP,    std::max(comp->penetration(UP),    p));
-//		}
-//	}
-//}
 
 unsigned updateFlags(unsigned flags, unsigned bit, const Json::Value& obj, const std::string& key) {
 	const Json::Value& b = obj.get(key, Json::Value(Json::nullValue));
@@ -139,9 +110,9 @@ void Level::initialize() {
 				entity.placeAt(Vector2(objectBox(obj).center()));
 //				entity.extra() = obj["properties"];
 			}
-//			else if(type == "trigger") {
-//				entity = createTrigger(obj, name);
-//			}
+			else if(type == "trigger") {
+				entity = createTrigger(obj, name);
+			}
 //			else if(type == "entity") {
 //				entity = createEntity(obj, name);
 //			}
@@ -159,7 +130,7 @@ void Level::initialize() {
 		}
 	}
 
-	updateDepth();
+//	updateDepth();
 }
 
 
@@ -167,13 +138,11 @@ void Level::start(const std::string& spawn) {
 	_mainState->log().info("Start level ", _path);
 	_levelRoot.setEnabled(true);
 
-	EntityRef spawnEntity = entity(spawn);
-	if(spawnEntity.isValid())
-		_mainState->_player.placeAt(spawnEntity.position2());
+	spawnPlayer(spawn);
 
-//	HitEventQueue hitQueue;
-//	_mainState->_collisions.findCollisions(hitQueue);
-//	_mainState->updateTriggers(hitQueue, EntityRef(), true);
+	_mainState->_entities.updateWorldTransforms();
+	_mainState->_collisions.findCollisions();
+	_mainState->updateTriggers(true);
 
 //	_mainState->orientPlayer(_mainState->_playerDir);
 
@@ -187,6 +156,12 @@ void Level::stop() {
 	_levelRoot.setEnabled(false);
 }
 
+
+void Level::spawnPlayer(const std::string& spawn) {
+	EntityRef spawnEntity = entity(spawn);
+	if(spawnEntity.isValid())
+		_mainState->_player.placeAt(Vector2(spawnEntity.position2() - Vector2(0, 24)));
+}
 
 Box2 Level::objectBox(const Json::Value& obj) const {
 	try {
@@ -251,60 +226,60 @@ EntityRef Level::createLayer(unsigned index, const char* name) {
 }
 
 
-//EntityRef Level::createTrigger(const Json::Value &obj, const std::string& name) {
-//	Json::Value props = obj.get("properties", Json::Value());
+EntityRef Level::createTrigger(const Json::Value &obj, const std::string& name) {
+	Json::Value props = obj.get("properties", Json::Value());
 
-//	Box2 box = objectBox(obj);
-//	float margin = props.get("margin", 0).asFloat();
-//	Vector2 half = box.sizes() / 2 + Vector2(margin, margin);
-//	Box2 hitBox(-half, half);
+	Box2 box = objectBox(obj);
+	float margin = props.get("margin", 0).asFloat();
+	Vector2 half = box.sizes() / 2 + Vector2(margin, margin);
+	Box2 hitBox(-half, half);
 
-//	EntityRef entity = _mainState->createTrigger(_objects, name.c_str(), hitBox);
-//	entity.place((Vector3() << box.center(), 0.08).finished());
-//	entity.setEnabled(props.get("enabled", true).asBool());
+	EntityRef entity = _mainState->createTrigger(_objects, name.c_str(), hitBox);
+	entity.placeAt((Vector3() << box.center(), 0.08).finished());
+	entity.setEnabled(props.get("enabled", true).asBool());
 
-//	TriggerComponent* tc = _mainState->_triggers.addComponent(entity);
-//	tc->onEnter = props.get("on_enter", "").asString();
-//	tc->onExit  = props.get("on_exit",  "").asString();
-//	tc->onUse   = props.get("on_use",   "").asString();
-//	if(props.get("solid", false).asBool()) {
-//		CollisionComponent* cc = _mainState->_collisions.get(entity);
-//		cc->setHitMask(cc->hitMask() | HIT_SOLID_FLAG);
-//	}
+	TriggerComponent* tc = _mainState->_triggers.get(entity);
+	tc->onEnter = props.get("on_enter", "").asString();
+	tc->onExit  = props.get("on_exit",  "").asString();
+	tc->onUse   = props.get("on_use",   "").asString();
+	if(props.get("solid", false).asBool()) {
+		CollisionComponent* cc = _mainState->_collisions.get(entity);
+		cc->setHitMask(cc->hitMask() | HIT_SOLID);
+	}
 
-//	int gid = obj.get("gid", 0).asInt();
-//	std::string sprite;
-//	int tileH = 1;
-//	int tileV = 1;
-//	int tileIndex = 0;
-//	if(gid) {
-//		sprite = _tileMap->tileSet()->asset()->logicPath().utf8String();
-//		tileH = TILE_SET_WIDTH;
-//		tileV = TILE_SET_HEIGHT;
-//		tileIndex = gid - 1;
-//	}
-//	sprite = props.get("sprite", sprite).asString();
-//	if(!sprite.empty()) {
-//		SpriteComponent* sc = _mainState->_sprites.addComponent(entity);
-//		sc->setTexture(sprite);
+	int gid = obj.get("gid", 0).asInt();
+	std::string sprite;
+	int tileH = 1;
+	int tileV = 1;
+	int tileIndex = 0;
+	if(gid) {
+		sprite = _tileMap->tileSet()->asset()->logicPath().utf8String();
+		tileH = TILE_SET_WIDTH;
+		tileV = TILE_SET_HEIGHT;
+		tileIndex = gid - 1;
+	}
+	sprite = props.get("sprite", sprite).asString();
+	if(!sprite.empty()) {
+		SpriteComponent* sc = _mainState->_sprites.addComponent(entity);
+		sc->setTexture(sprite);
 
-//		tileIndex = props.get("tile_index", tileIndex).asInt();
-//		sc->setTileIndex(tileIndex);
+		tileIndex = props.get("tile_index", tileIndex).asInt();
+		sc->setTileIndex(tileIndex);
 		
-//		tileH = props.get("tile_h", tileH).asInt();
-//		tileV = props.get("tile_v", tileV).asInt();
-//		Vector2 anchor(props.get("anchor_x", 0.5).asFloat(),
-//		               props.get("anchor_y", 0.5).asFloat());
-//		sc->setTileGridSize(Vector2i(tileH, tileV));
-//		sc->setAnchor(anchor);
-//		sc->setBlendingMode(BLEND_ALPHA);
+		tileH = props.get("tile_h", tileH).asInt();
+		tileV = props.get("tile_v", tileV).asInt();
+		Vector2 anchor(props.get("anchor_x", 0.5).asFloat(),
+		               props.get("anchor_y", 0.5).asFloat());
+		sc->setTileGridSize(Vector2i(tileH, tileV));
+		sc->setAnchor(anchor);
+		sc->setBlendingMode(BLEND_ALPHA);
 
-//		float scalex = props.get("scale_x", 1).asFloat();
-//		entity.transform().matrix()(0, 0) = scalex;
-//	}
+		float scalex = props.get("scale_x", 1).asFloat();
+		entity.transform().matrix()(0, 0) = scalex;
+	}
 
-//	return entity;
-//}
+	return entity;
+}
 
 
 //EntityRef Level::createItem(const Json::Value& obj, const std::string& name) {
@@ -422,59 +397,16 @@ Level::EntityRange Level::entities(const std::string& name) {
 }
 
 
-void Level::updateDepth(EntityRef entity) const {
-	float depth = entity.transform()(1, 3) / _tileMap->width(0) / float(TILE_SIZE);
-	entity.transform()(2, 3) = lerp(depth, 0.2f, 0.1f);
-}
-
-void Level::updateDepth() {
-	EntityRef entity = _objects.firstChild();
-
-	for(unsigned count = 1; entity.isValid(); ++count) {
-		updateDepth(entity);
-		entity = entity.nextSibling();
-	}
-}
-
-
-//void Level::computeCollisions() {
-//	// FIXME: The character can be stuck while sliding against a wall. Compute
-//	// collision against thin walls.
-
-//	EntityRef entity = _mainState->_player;
-
-//	CollisionComponent* cc = _mainState->_collisions.get(entity);
-//	if(!cc->isEnabled())
-//		return;
-//	lairAssert(cc && cc->shape() && cc->shape()->type() == SHAPE_ALIGNED_BOX);
-
-//	TileLayerComponent* tlc = _mainState->_tileLayers.get(_baseLayer);
-//	lairAssert(tlc && tlc->tileMap());
-//	unsigned layer = tlc->layerIndex();
-
-//	for(int i = 0; i < N_DIRECTIONS; ++i)
-//		cc->setPenetration(Direction(i), -TILE_SIZE);
-
-//	Vector2 pos  = entity.computeWorldTransform().translation().head<2>();
-//	Box2    realBox(pos + cc->shape()->point(0), pos + cc->shape()->point(1));
-//	Box2i box(cellCoord(realBox.corner(Box2::TopLeft),     _tileMap->height(layer)),
-//	          cellCoord(realBox.corner(Box2::BottomRight), _tileMap->height(layer)));
-
-////	Vector2 lpos = _baseLayer.worldTransform().translation().head<2>();
-//	int width  = _tileMap->width(layer);
-//	int height = _tileMap->height(layer);
-//	int beginX = std::max(box.min()(0) - 1, 0);
-//	int endX   = std::min(box.max()(0) + 2, width);
-//	int beginY = std::max(box.min()(1) - 1, 0);
-//	int endY   = std::min(box.max()(1) + 2, height);
-//	for(int y = beginY; y < endY; ++y) {
-//		for(int x = beginX; x < endX; ++x) {
-//			if(isSolid(_tileMap->tile(x, y, layer))) {
-//				Box2 tileBox(Vector2(x, height - y - 1) * TILE_SIZE,
-//				             Vector2(x + 1, height - y) * TILE_SIZE);
-//				updatePenetration(cc, realBox, tileBox);
-//			}
-//		}
-//	}
+//void Level::updateDepth(EntityRef entity) const {
+//	float depth = entity.transform()(1, 3) / _tileMap->width(0) / float(TILE_SIZE);
+//	entity.transform()(2, 3) = lerp(depth, 0.2f, 0.1f);
 //}
 
+//void Level::updateDepth() {
+//	EntityRef entity = _objects.firstChild();
+
+//	for(unsigned count = 1; entity.isValid(); ++count) {
+//		updateDepth(entity);
+//		entity = entity.nextSibling();
+//	}
+//}

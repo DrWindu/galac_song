@@ -25,6 +25,7 @@
 
 #include "game.h"
 #include "level.h"
+#include "commands.h"
 
 #include "main_state.h"
 
@@ -54,7 +55,8 @@ MainState::MainState(Game* game)
       _spriteRenderer(renderer()),
       _sprites(assets(), loader(), &_mainPass, &_spriteRenderer),
       _collisions(),
-      _characters(&_collisions),
+      _triggers(),
+      _characters(this),
       _texts(loader(), &_mainPass, &_spriteRenderer),
       _tileLayers(loader(), &_mainPass, &_spriteRenderer),
 
@@ -78,9 +80,16 @@ MainState::MainState(Game* game)
 {
 	_entities.registerComponentManager(&_sprites);
 	_entities.registerComponentManager(&_collisions);
+	_entities.registerComponentManager(&_triggers);
 	_entities.registerComponentManager(&_characters);
 	_entities.registerComponentManager(&_texts);
 	_entities.registerComponentManager(&_tileLayers);
+
+	_commands.emplace("echo",      echoCommand);
+	_commands.emplace("set_spawn", setSpawnCommand);
+	_commands.emplace("kill",      killCommand);
+	_commands.emplace("disable",   disableCommand);
+	_commands.emplace("credits",   creditsCommand);
 }
 
 
@@ -101,8 +110,8 @@ void MainState::initialize() {
 	_quitInput  = _inputs.addInput("quit");
 	_leftInput  = _inputs.addInput("left");
 	_rightInput = _inputs.addInput("right");
-	_downInput = _inputs.addInput("down");
-	_upInput = _inputs.addInput("up");
+	_downInput  = _inputs.addInput("down");
+	_upInput    = _inputs.addInput("up");
 	_jumpInput  = _inputs.addInput("jump");
 	_dashInput  = _inputs.addInput("dash");
 
@@ -121,11 +130,12 @@ void MainState::initialize() {
 	_models      = _entities.findByName("__models__");
 	_playerModel = _entities.findByName("player_model", _models);
 
+	_background  = _entities.findByName("background");
 	_scene       = _entities.findByName("scene");
 	_gui         = _entities.findByName("gui");
 
-	_level.reset(new Level(this, "test_map.json"));
-	_level->preload();
+	registerLevel("test_map.json");
+	registerLevel("lvl1.json");
 
 //	loader()->load<SoundLoader>("sound.ogg");
 //	//loader()->load<MusicLoader>("music.ogg");
@@ -147,8 +157,8 @@ void MainState::initialize() {
 
 	_playerPhysics->numJumps     = 2;
 	_playerPhysics->jumpTicks    = 10;
-	_playerPhysics->gravity      = 24 * tileSize * TICK_LENGTH_IN_SEC * TICK_LENGTH_IN_SEC;
-	_playerPhysics->jumpSpeed    = 16 * tileSize * TICK_LENGTH_IN_SEC;
+	_playerPhysics->gravity      = 32 * tileSize * TICK_LENGTH_IN_SEC * TICK_LENGTH_IN_SEC;
+	_playerPhysics->jumpSpeed    = 19 * tileSize * TICK_LENGTH_IN_SEC;
 	_playerPhysics->jumpAccel    = _playerPhysics->jumpSpeed / _playerPhysics->jumpTicks;
 	_playerPhysics->maxFallSpeed = _playerPhysics->jumpSpeed;
 
@@ -156,7 +166,7 @@ void MainState::initialize() {
 	_playerPhysics->maxWallFallSpeed = 0.25 * _playerPhysics->maxFallSpeed;
 
 	_playerPhysics->numDashes = 1;
-	_playerPhysics->dashTicks = 15;
+	_playerPhysics->dashTicks = 8;
 	_playerPhysics->dashSpeed = 32   * tileSize * TICK_LENGTH_IN_SEC;
 
 	_initialized = true;
@@ -195,6 +205,91 @@ void MainState::run() {
 }
 
 
+void MainState::exec(const std::string& cmds, EntityRef self) {
+	CommandList commands;
+	unsigned first = 0;
+	for(unsigned ci = 0; ci <= cmds.size(); ++ci) {
+		if(ci == cmds.size() || cmds[ci] == '\n' || cmds[ci] == ';') {
+			commands.emplace_back(CommandExpr{ String(cmds.begin() + first, cmds.begin() + ci), self });
+			first = ci + 1;
+		}
+	}
+	exec(commands);
+}
+
+
+void MainState::exec(const CommandList& commands) {
+	bool execNow = _commandList.empty();
+	_commandList.insert(_commandList.begin(), commands.begin(), commands.end());
+	if(execNow)
+		execNext();
+}
+
+
+void MainState::execNext() {
+	while(!_commandList.empty()) {
+		CommandExpr cmd = _commandList.front();
+		_commandList.pop_front();
+		if(execSingle(cmd.command, cmd.self) == 0)
+			return;
+	}
+}
+
+
+int MainState::execSingle(const std::string& cmd, EntityRef self) {
+#define MAX_CMD_ARGS 32
+
+	std::string tokens = cmd;
+	unsigned    size   = tokens.size();
+	int ret = 0;
+	for(unsigned ci = 0; ci < size; ) {
+		int   argc = 0;
+		const char* argv[MAX_CMD_ARGS];
+		while(ci < size) {
+			bool endLine = false;
+			while(ci < size && std::isspace(tokens[ci])) {
+				endLine = (tokens[ci] == '\n') || (tokens[ci] == ';');
+				tokens[ci] = '\0';
+				++ci;
+			}
+			if(endLine)
+				break;
+
+			argv[argc] = tokens.data() + ci;
+			++argc;
+
+			while(ci < size && !std::isspace(tokens[ci])) {
+				++ci;
+			}
+		}
+
+		if(argc) {
+			ret = exec(argc, argv, self);
+		}
+	}
+
+	return ret;
+}
+
+
+int MainState::exec(int argc, const char** argv, EntityRef self) {
+	lairAssert(argc > 0);
+
+	std::ostringstream out;
+	out << argv[0];
+	for(int i = 1; i < argc; ++i)
+		out << " " << argv[i];
+	dbgLogger.info(out.str());
+
+	auto cmd = _commands.find(argv[0]);
+	if(cmd == _commands.end()) {
+		dbgLogger.warning("Unknown command \"", argv[0], "\"");
+		return -1;
+	}
+	return cmd->second(this, self, argc, argv);
+}
+
+
 void MainState::quit() {
 	_running = false;
 }
@@ -205,20 +300,101 @@ Game* MainState::game() {
 }
 
 
-void MainState::startGame() {
-	// TODO: Setup game
+LevelSP MainState::registerLevel(const Path& path) {
+	LevelSP level(new Level(this, path));
+	_levelMap.emplace(path, level);
+	level->preload();
+	return level;
+}
+
+
+void MainState::loadLevel(const Path& level, const String& spawn) {
+	if(_level)
+		_level->stop();
 
 	while(_scene.firstChild().isValid())
 		_scene.firstChild().destroy();
 
+	_level = _levelMap.at(level);
 	_level->initialize();
-	_characters.setLevel(_level.get());
 
 	_player = _entities.cloneEntity(_playerModel, _scene, "player");
 	CharacterComponent* pChar = _characters.addComponent(_player);
 	pChar->physics = _playerPhysics;
 
-	_level->start("spawn");
+	_spawnName = spawn;
+	_level->start(_spawnName);
+}
+
+
+EntityRef MainState::getEntity(const String& name, const EntityRef& ancestor) {
+	EntityRef entity = _entities.findByName(name, ancestor);
+	if(!entity.isValid()) {
+		log().error("Entity \"", name, "\" not found.");
+	}
+	return entity;
+}
+
+
+EntityRef MainState::createTrigger(EntityRef parent, const char* name, const Box2& box) {
+	EntityRef entity = _entities.createEntity(parent, name);
+
+	CollisionComponent* cc = _collisions.addComponent(entity);
+	cc->addShape(Shape::newAlignedBox(box));
+	cc->setHitMask(HIT_PLAYER | HIT_TRIGGER);
+	cc->setIgnoreMask(HIT_TRIGGER);
+
+	_triggers.addComponent(entity);
+
+	return entity;
+}
+
+
+void MainState::updateTriggers(bool disableCmds) {
+	_triggers.compactArray();
+
+	for(TriggerComponent& tc: _triggers) {
+		if(tc.isEnabled() && tc.entity().isEnabledRec()) {
+			tc.prevInside = tc.inside;
+			tc.inside = false;
+		}
+	}
+
+	for(HitEvent hit: _collisions.hitEvents()) {
+		if(hit.entities[1] == _player) {
+			std::swap(hit.entities[0], hit.entities[1]);
+			hit.penetration = -hit.penetration;
+		}
+
+		if(hit.entities[0] == _player) {
+			TriggerComponent* tc = _triggers.get(hit.entities[1]);
+			if(tc) {
+				tc->inside = true;
+			}
+		}
+	}
+
+	if(!disableCmds) {
+		for(TriggerComponent& tc: _triggers) {
+			if(tc.isEnabled() && tc.entity().isEnabledRec()) {
+				if(!tc.prevInside && tc.inside && !tc.onEnter.empty())
+					exec(tc.onEnter, tc.entity());
+				if(tc.prevInside && !tc.inside && !tc.onExit.empty())
+					exec(tc.onExit, tc.entity());
+			}
+		}
+	}
+}
+
+
+void MainState::killPlayer() {
+	// TODO: animation + sound
+	_level->spawnPlayer(_spawnName);
+}
+
+
+void MainState::startGame() {
+	// TODO: Setup game
 
 	dumpEntityTree(log(), _entities.root());
 
@@ -261,6 +437,7 @@ void MainState::updateTick() {
 //	}
 
 	_characters.processCollisions();
+	updateTriggers();
 
 	_entities.updateWorldTransforms();
 }
@@ -269,11 +446,31 @@ void MainState::updateTick() {
 void MainState::updateFrame() {
 	// Update camera
 
+	Vector3 h(960, 540, .5);
+	Vector2 min = h.head<2>();
+	Vector2 max(_level->tileMap()->width(0)  * TILE_SIZE - h(0),
+	            _level->tileMap()->height(0) * TILE_SIZE - h(1));
 	Vector3 c;
 	c << _player.interpPosition2(_loop.frameInterp()), .5;
-	Vector3 h(960, 540, .5);
+	c(0) = clamp(c(0), min(0), max(0));
+	c(1) = clamp(c(1), min(1), max(1));
 	Box3 viewBox(c - h, c + h);
 	_camera.setViewBox(viewBox);
+
+	// Update background
+
+	_background.placeAt(Vector2(viewBox.min().head<2>()));
+
+	SpriteComponent* bgSprite = _sprites.get(_background);
+	Vector2 screenSize(1920, 1080);
+	Vector2 bgSize(bgSprite->texture()->get().width(),
+	               bgSprite->texture()->get().height());
+	Vector2 b = (c.head<2>() - min) / 2;
+	b(1) = screenSize(1) / 2 - b(1);
+	Box2 bgView(b, b + screenSize);
+	bgView = Box2(bgView.min().cwiseQuotient(bgSize),
+	              bgView.max().cwiseQuotient(bgSize));
+	bgSprite->setView(bgView);
 
 	// Rendering
 	Context* glc = renderer()->context();

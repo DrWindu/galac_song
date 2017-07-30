@@ -34,6 +34,7 @@ add_executable(${CMAKE_PROJECT_NAME}
 	game.cpp
 	components.cpp
 	level.cpp
+	commands.cpp
 	main_state.cpp
 	splash_state.cpp
 )

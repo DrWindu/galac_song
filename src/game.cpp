@@ -49,9 +49,16 @@ const PropertyList& GameConfig::staticProperties() {
 Game::Game(int argc, char** argv)
     : GameBase(argc, argv),
       _mainState(),
-      _splashState() {
+      _splashState(),
+      _levelPath("lvl1.json"),
+      _spawnName("spawn") {
 	serializer().registerType<ShapeSP>();
 	serializer().registerType<ShapeSPVector>();
+
+	if(argc > 1)
+		_levelPath = argv[1];
+	if(argc > 2)
+		_spawnName = argv[2];
 }
 
 
@@ -74,6 +81,7 @@ void Game::initialize() {
 
 	_splashState->initialize();
 	_mainState->initialize();
+	_mainState->loadLevel(_levelPath, _spawnName);
 
 	_splashState->setup(_mainState.get(), "lair.png", 3);
 }

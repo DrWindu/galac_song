@@ -4,14 +4,14 @@ __models__ = {
 		player_model = {
 			transform = translate(0, 0, 0.5)
 			sprite = {
-				texture       = "character.png"
-				tile_grid     = Vector(8, 8)
+				texture       = "player.png"
+				tile_grid     = Vector(2, 1)
 				tile_index    = 0
 				anchor        = Vector(0.5, 0)
 				texture_flags = "bilinear_no_mipmap | clamp"
 			}
 			collision = {
-				shape       = ABox{ min = Vector(-24, 0), size = Vector(48, 48) }
+				shape       = ABox{ min = Vector(-22, 0), size = Vector(44, 94) }
 				// 1: solid, 2: player, 4: character
 				hit_mask    = 0x07
 				// ignore intersection with other characters
@@ -21,8 +21,18 @@ __models__ = {
 	}
 }
 
+background = {
+	sprite = {
+		texture       = "background1.png"
+		tile_grid     = Vector(1, 1)
+		tile_index    = 0
+		anchor        = Vector(0, 0)
+		texture_flags = "bilinear_no_mipmap | repeat_x | clamp_y"
+	}
+}
+
 scene = {
-	transform = translate(0, 0, 0)
+	transform = translate(0, 0, 0.1)
 }
 
 gui = {

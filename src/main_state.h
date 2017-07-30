@@ -48,8 +48,10 @@ using namespace lair;
 
 class Game;
 class Level;
+class MainState;
 
 typedef std::shared_ptr<Level> LevelSP;
+typedef std::unordered_map<Path, LevelSP, boost::hash<Path>> LevelMap;
 
 enum {
 	TICKS_PER_SEC  = 60,
@@ -58,13 +60,14 @@ enum {
 
 extern const float TICK_LENGTH_IN_SEC;
 
-//enum DirFlags {
-//	DIR_NONE  = 0x00,
-//	DIR_RIGHT = 0x01,
-//	DIR_UP    = 0x02,
-//	DIR_LEFT  = 0x04,
-//	DIR_DOWN  = 0x08,
-//};
+typedef int (*Command)(MainState* state, EntityRef self, int argc, const char** argv);
+typedef std::unordered_map<std::string, Command> CommandMap;
+
+struct CommandExpr {
+	String    command;
+	EntityRef self;
+};
+typedef std::deque<CommandExpr> CommandList;
 
 
 class MainState : public GameState {
@@ -79,6 +82,22 @@ public:
 	virtual void quit();
 
 	Game* game();
+
+	void exec(const std::string& cmd, EntityRef self = EntityRef());
+	void exec(const CommandList& commands);
+	void execNext();
+	int execSingle(const std::string& cmd, EntityRef self = EntityRef());
+	int exec(int argc, const char** argv, EntityRef self = EntityRef());
+
+	LevelSP registerLevel(const Path& level);
+	void loadLevel(const Path& level, const String& spawn = "spawn");
+
+	EntityRef getEntity(const String& name, const EntityRef& ancestor = EntityRef());
+	EntityRef createTrigger(EntityRef parent, const char* name, const Box2& box);
+
+	void updateTriggers(bool disableCmds = false);
+
+	void killPlayer();
 
 	void startGame();
 	void updateTick();
@@ -98,6 +117,7 @@ public:
 	SpriteRenderer             _spriteRenderer;
 	SpriteComponentManager     _sprites;
 	CollisionComponentManager  _collisions;
+	TriggerComponentManager    _triggers;
 	CharacterComponentManager  _characters;
 	BitmapTextComponentManager _texts;
 	TileLayerComponentManager  _tileLayers;
@@ -114,6 +134,9 @@ public:
 	int64       _fpsTime;
 	unsigned    _fpsCount;
 
+	CommandMap  _commands;
+	CommandList _commandList;
+
 	Input*      _quitInput;
 	Input*      _leftInput;
 	Input*      _rightInput;
@@ -122,7 +145,9 @@ public:
 	Input*      _jumpInput;
 	Input*      _dashInput;
 
-	LevelSP _level;
+	LevelMap _levelMap;
+	LevelSP  _level;
+	String   _spawnName;
 
 	EntityRef   _models;
 
@@ -141,6 +166,7 @@ public:
 
 	EntityRef   _tileLayer;
 
+	EntityRef   _background;
 	EntityRef   _scene;
 	EntityRef   _player;
 

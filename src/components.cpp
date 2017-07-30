@@ -138,10 +138,9 @@ const PropertyList& CharacterComponent::properties() {
 }
 
 
-CharacterComponentManager::CharacterComponentManager(CollisionComponentManager* collisions)
+CharacterComponentManager::CharacterComponentManager(MainState* mainState)
     : DenseComponentManager<CharacterComponent>("character", 128)
-    , _collisions(collisions)
-    , _level(nullptr)
+    , _mainState(mainState)
 {
 }
 
@@ -214,10 +213,10 @@ void CharacterComponentManager::updatePhysics() {
 			float targetXSpeed = (c.moveDir == DIR_LEFT)?  -p->maxSpeed:
 								 (c.moveDir == DIR_RIGHT)?  p->maxSpeed: 0.f;
 			float diff = targetXSpeed - c.velocity(0);
-			if(c.wallJumpDir == DIR_NONE && (
+			if(c.wallJumpDir == DIR_NONE /*&& (
 						onGround ||
 						(c.moveDir == DIR_LEFT  && c.velocity(0) > -p->maxSpeed) ||
-						(c.moveDir == DIR_RIGHT && c.velocity(0) <  p->maxSpeed))) {
+						(c.moveDir == DIR_RIGHT && c.velocity(0) <  p->maxSpeed))*/) {
 				float accel = onGround? p->playerAccel: p->airControl;
 				if(diff < 0)
 					acceleration(0) = std::max(-accel, diff);
@@ -245,7 +244,6 @@ void CharacterComponentManager::updatePhysics() {
 				c.wallJumpDir = onGround?                DIR_NONE:
 							   (c.touchDir & DIR_LEFT)?  DIR_RIGHT:
 							   (c.touchDir & DIR_RIGHT)? DIR_LEFT: DIR_NONE;
-				dbgLogger.info("jump: ", c.wallJumpDir, ", onGround: ", onGround);
 				c.jumpDuration = 0;
 				c.jumpCount -= 1;
 			}
@@ -276,10 +274,13 @@ void CharacterComponentManager::updatePhysics() {
 
 		if(pos != c.entity().position2()) {
 			c.entity().moveTo(pos);
-			CollisionComponent* cc = _collisions->get(c.entity());
+			CollisionComponent* cc = _mainState->_collisions.get(c.entity());
 			if(cc)
 				cc->setDirty();
 		}
+
+		SpriteComponent* sprite = _mainState->_sprites.get(c.entity());
+		sprite->setTileIndex((c.lookDir == DIR_LEFT)? 1: 0);
 
 		c.prevDirPressed  = c.dirPressed;
 		c.prevJumpPressed = c.jumpPressed;
@@ -307,13 +308,13 @@ void CharacterComponentManager::processCollisions() {
 		if(!c.isAlive() || !c.isEnabled() || !c.physics || !c.entity().isEnabledRec())
 			continue;
 
-		CollisionComponent* coll = _collisions->get(c.entity());
+		CollisionComponent* coll = _mainState->_collisions.get(c.entity());
 		Shape wShape;
 		coll->shapes()[0]->setTransformed(wShape, c.entity().worldTransform().matrix());
 		Box2 box = wShape.boundingBox();
 		box = Box2(box.min() - vSkin, box.max() + vSkin);
 
-		TileMap* tileMap = _level->tileMap();
+		TileMap* tileMap = _mainState->_level->tileMap();
 		int layer = 0;
 		int width  = tileMap->width (layer);
 		int height = tileMap->height(layer);
@@ -321,13 +322,14 @@ void CharacterComponentManager::processCollisions() {
 		               height - std::ceil (box.max()(1) / TILE_SIZE));
 		Vector2i end  (std::ceil (box.max()(0) / TILE_SIZE),
 		               height - std::floor(box.min()(1) / TILE_SIZE));
-		begin(0) = std::max(begin(0), 0);
-		begin(1) = std::max(begin(1), 0);
-		end(0) = std::min(end(0), width);
-		end(1) = std::min(end(1), height);
+//		begin(0) = std::max(begin(0), 0);
+//		begin(1) = std::max(begin(1), 0);
+//		end(0) = std::min(end(0), width);
+//		end(1) = std::min(end(1), height);
 		for(int y = begin(1); y < end(1); ++y) {
 			for(int x = begin(0); x < end(0); ++x) {
-				if(isSolid(tileMap->tile(x, y, layer))) {
+				if(x < 0 || x >= width || y < 0 || y >= height
+				|| isSolid(tileMap->tile(x, y, layer))) {
 					Box2 tileBox(Vector2(x,     height - y - 1) * TILE_SIZE,
 					             Vector2(x + 1, height - y    ) * TILE_SIZE);
 
@@ -338,10 +340,14 @@ void CharacterComponentManager::processCollisions() {
 					dist[UP]    = box.max()(1) - tileBox.min()(1);
 
 					bool empty[4];
-					empty[LEFT]  = x + 1 >= width  || !isSolid(tileMap->tile(x + 1, y, layer));
-					empty[RIGHT] = x - 1 < 0       || !isSolid(tileMap->tile(x - 1, y, layer));
-					empty[DOWN]  = y - 1 < 0       || !isSolid(tileMap->tile(x, y - 1, layer));
-					empty[UP]    = y + 1 >= height || !isSolid(tileMap->tile(x, y + 1, layer));
+					empty[LEFT]  = x + 1 < width  && y >= 0 && y < height
+					            && !isSolid(tileMap->tile(x + 1, y, layer));
+					empty[RIGHT] = x - 1 >= 0     && y >= 0 && y < height
+					            && !isSolid(tileMap->tile(x - 1, y, layer));
+					empty[DOWN]  = y - 1 >= 0     && x >= 0 && x < width
+					            && !isSolid(tileMap->tile(x, y - 1, layer));
+					empty[UP]    = y + 1 < height && x >= 0 && x < width
+					            && !isSolid(tileMap->tile(x, y + 1, layer));
 //					dbgLogger.info(x, ", ", y, ": ", dist[LEFT], ", ", dist[RIGHT], ", ", dist[DOWN], ", ", dist[UP]);
 //					dbgLogger.info("  empty: ", empty[LEFT], ", ", empty[RIGHT], ", ", empty[DOWN], ", ", empty[UP]);
 
@@ -352,7 +358,7 @@ void CharacterComponentManager::processCollisions() {
 
 					for(int di = 0; di < 4; ++di) {
 						Direction d = Direction(dirs[di]);
-						if(empty[d]) {
+						if(empty[d] && dist[d] < dist[(d+2)%4]) {
 							c.penetration[d] = std::max(c.penetration[d], dist[d] - skin);
 							if(dist[d] > -skin)
 								c.touchDir |= 1 << d;
@@ -381,10 +387,10 @@ void CharacterComponentManager::processCollisions() {
 			c.entity().moveTo(Vector2(c.entity().position2() + offset));
 			coll->setDirty();
 		}
-		dbgLogger.info("\"", c.entity().name(), "\" collisions: ",
-		               c.penetration[0], ", ", c.penetration[1], ", ",
-		        c.penetration[2], ", ", c.penetration[3], " - ",
-		        c.touchDir, " - ", (offset).transpose(), " - ", c.velocity.transpose());
+//		dbgLogger.info("\"", c.entity().name(), "\" collisions: ",
+//		               c.penetration[0], ", ", c.penetration[1], ", ",
+//		        c.penetration[2], ", ", c.penetration[3], " - ",
+//		        c.touchDir, " - ", (offset).transpose(), " - ", c.velocity.transpose());
 
 		if(c.touchDir & DIR_LEFT && c.velocity(0) < 0)
 			c.velocity(0) = 0;
