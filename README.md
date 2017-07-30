@@ -1,15 +1,10 @@
-# Lair game template
+# Draklia's game for Ludum Dare 39 (to be named...)
 
-An empty game based on [Lair](https://github.com/draklaw/lair). Use this as a starting point for a game jam.
+This one is going to be a platformer.
 
 ## Presentation
 
-[ Write here a nice description of your game ! ]
-
-TODO list if you use this:
-- Change the name of the project in `CMakeLists.txt`.
-- Add authors to AUTORS.
-- Code your game !
+[ TODO ! ]
 
 ## Compilation
 
