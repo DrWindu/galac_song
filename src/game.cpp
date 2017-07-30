@@ -19,6 +19,8 @@
  */
 
 
+#include "lair/core/property.h"
+
 #include "main_state.h"
 #include "splash_state.h"
 
@@ -48,6 +50,8 @@ Game::Game(int argc, char** argv)
     : GameBase(argc, argv),
       _mainState(),
       _splashState() {
+	serializer().registerType<ShapeSP>();
+	serializer().registerType<ShapeSPVector>();
 }
 
 

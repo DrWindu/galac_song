@@ -24,6 +24,7 @@
 #include <lair/core/json.h>
 
 #include "game.h"
+#include "level.h"
 
 #include "main_state.h"
 
@@ -35,7 +36,7 @@ const float TICK_LENGTH_IN_SEC = 1.f / float(TICKS_PER_SEC);
 
 
 void dumpEntityTree(Logger& log, EntityRef e, unsigned indent = 0) {
-	log.info(std::string(indent * 2u, ' '), e.name(), ": ", e.isEnabled());
+	log.info(std::string(indent * 2u, ' '), e.name(), ": ", e.isEnabled(), ", ", e.position3().transpose());
 	EntityRef c = e.firstChild();
 	while(c.isValid()) {
 		dumpEntityTree(log, c, indent + 1);
@@ -52,6 +53,8 @@ MainState::MainState(Game* game)
       _entities(log(), _game->serializer()),
       _spriteRenderer(renderer()),
       _sprites(assets(), loader(), &_mainPass, &_spriteRenderer),
+      _collisions(),
+      _characters(&_collisions),
       _texts(loader(), &_mainPass, &_spriteRenderer),
       _tileLayers(loader(), &_mainPass, &_spriteRenderer),
 
@@ -68,11 +71,14 @@ MainState::MainState(Game* game)
       _quitInput(nullptr),
       _leftInput(nullptr),
       _rightInput(nullptr),
+      _downInput(nullptr),
+      _upInput(nullptr),
       _jumpInput(nullptr),
       _dashInput(nullptr)
 {
-
 	_entities.registerComponentManager(&_sprites);
+	_entities.registerComponentManager(&_collisions);
+	_entities.registerComponentManager(&_characters);
 	_entities.registerComponentManager(&_texts);
 	_entities.registerComponentManager(&_tileLayers);
 }
@@ -95,12 +101,16 @@ void MainState::initialize() {
 	_quitInput  = _inputs.addInput("quit");
 	_leftInput  = _inputs.addInput("left");
 	_rightInput = _inputs.addInput("right");
+	_downInput = _inputs.addInput("down");
+	_upInput = _inputs.addInput("up");
 	_jumpInput  = _inputs.addInput("jump");
 	_dashInput  = _inputs.addInput("dash");
 
 	_inputs.mapScanCode(_quitInput,  SDL_SCANCODE_ESCAPE);
 	_inputs.mapScanCode(_leftInput,  SDL_SCANCODE_LEFT);
 	_inputs.mapScanCode(_rightInput, SDL_SCANCODE_RIGHT);
+	_inputs.mapScanCode(_downInput, SDL_SCANCODE_DOWN);
+	_inputs.mapScanCode(_upInput, SDL_SCANCODE_UP);
 	_inputs.mapScanCode(_jumpInput,  SDL_SCANCODE_SPACE);
 	_inputs.mapScanCode(_jumpInput,  SDL_SCANCODE_X);
 	_inputs.mapScanCode(_dashInput,  SDL_SCANCODE_Z);
@@ -108,19 +118,14 @@ void MainState::initialize() {
 	// TODO: load stuff.
 	loadEntities("entities.ldl", _entities.root());
 
-//	AssetSP tileMapAsset = loader()->load<TileMapLoader>("map.json")->asset();
-//	_tileMap = tileMapAsset->aspect<TileMapAspect>();
-
-//	_tileLayer = _entities.createEntity(_entities.root(), "tile_layer");
-//	TileLayerComponent* tileLayerComp = _tileLayers.addComponent(_tileLayer);
-//	tileLayerComp->setTileMap(_tileMap);
-//	_tileLayer.place(Vector3(120, 90, .5));
-
 	_models      = _entities.findByName("__models__");
 	_playerModel = _entities.findByName("player_model", _models);
 
 	_scene       = _entities.findByName("scene");
 	_gui         = _entities.findByName("gui");
+
+	_level.reset(new Level(this, "test_map.json"));
+	_level->preload();
 
 //	loader()->load<SoundLoader>("sound.ogg");
 //	//loader()->load<MusicLoader>("music.ogg");
@@ -129,6 +134,30 @@ void MainState::initialize() {
 
 	// Set to true to debug OpenGL calls
 	renderer()->context()->setLogCalls(false);
+
+	// Physics !
+	_playerPhysics.reset(new CharPhysicsParams);
+
+	float tileSize = TILE_SIZE * 2;
+
+	_playerPhysics->accelTime    =  0.1 * TICKS_PER_SEC;
+	_playerPhysics->maxSpeed     =  8   * tileSize * TICK_LENGTH_IN_SEC;
+	_playerPhysics->playerAccel  = _playerPhysics->maxSpeed / _playerPhysics->accelTime;
+	_playerPhysics->airControl   =  0.5 * _playerPhysics->playerAccel;
+
+	_playerPhysics->numJumps     = 2;
+	_playerPhysics->jumpTicks    = 10;
+	_playerPhysics->gravity      = 24 * tileSize * TICK_LENGTH_IN_SEC * TICK_LENGTH_IN_SEC;
+	_playerPhysics->jumpSpeed    = 16 * tileSize * TICK_LENGTH_IN_SEC;
+	_playerPhysics->jumpAccel    = _playerPhysics->jumpSpeed / _playerPhysics->jumpTicks;
+	_playerPhysics->maxFallSpeed = _playerPhysics->jumpSpeed;
+
+	_playerPhysics->wallJumpAccel = 0.5 * _playerPhysics->jumpAccel;
+	_playerPhysics->maxWallFallSpeed = 0.25 * _playerPhysics->maxFallSpeed;
+
+	_playerPhysics->numDashes = 1;
+	_playerPhysics->dashTicks = 15;
+	_playerPhysics->dashSpeed = 32   * tileSize * TICK_LENGTH_IN_SEC;
 
 	_initialized = true;
 }
@@ -182,17 +211,14 @@ void MainState::startGame() {
 	while(_scene.firstChild().isValid())
 		_scene.firstChild().destroy();
 
+	_level->initialize();
+	_characters.setLevel(_level.get());
+
 	_player = _entities.cloneEntity(_playerModel, _scene, "player");
-	_player.placeAt(Vector3(window()->width() / 2.f, window()->height() / 2.f, 0));
-	_playerVelocity.setZero();
-	_playerMoveDir  = DIR_NONE;
-	_jumpDuration   = 0;
-	_jumpCount      = 0;
-	_wallJumpDir    = DIR_NONE;
-	_dashDuration   = 9999;
-	_playerDir      = DIR_RIGHT;
-	_playerAnim     = 0;
-	_playerAnimTime = 0;
+	CharacterComponent* pChar = _characters.addComponent(_player);
+	pChar->physics = _playerPhysics;
+
+	_level->start("spawn");
 
 	dumpEntityTree(log(), _entities.root());
 
@@ -211,183 +237,44 @@ void MainState::updateTick() {
 		quit();
 	}
 
-	// Player movement
-	float accelTime    =  0.1 * TICKS_PER_SEC;
-	float maxSpeed     =  8   * TILE_SIZE * TICK_LENGTH_IN_SEC;
-	float playerAccel  = maxSpeed / accelTime;
-	float airControl   =  0.5 * playerAccel;
+	// Player input
+	CharacterComponent* pChar = _characters.get(_player);
+	if(_leftInput->isPressed())
+		pChar->pressMove(DIR_LEFT);
+	if(_rightInput->isPressed())
+		pChar->pressMove(DIR_RIGHT);
+	if(_downInput->isPressed())
+		pChar->pressMove(DIR_DOWN);
+	if(_upInput->isPressed())
+		pChar->pressMove(DIR_UP);
+	pChar->pressJump(_jumpInput->isPressed());
+	pChar->pressDash(_dashInput->justPressed());
 
-	int   numJumps     = 2;
-	int   jumpTicks    = 10;
-	float gravity      = 24 * TILE_SIZE * TICK_LENGTH_IN_SEC * TICK_LENGTH_IN_SEC;
-	float jumpSpeed    = 16 * TILE_SIZE * TICK_LENGTH_IN_SEC;
-//	float jumpHeight   =  3.1   * TILE_SIZE;
-//	float jumpSpeed    = .5 * (gravity + sqrt(gravity * gravity + 8 * gravity * jumpHeight));
-	float jumpAccel    = jumpSpeed / jumpTicks;
-	float maxFallSpeed = jumpSpeed;
+	// Update components
+	_characters.updatePhysics();
 
-	float wallJumpAccel = 0.5 * jumpAccel;
-	float maxWallFallSpeed = 0.25 * maxFallSpeed;
+	_entities.updateWorldTransforms();
+	_collisions.findCollisions();
+//	for(const HitEvent& hit: _collisions.hitEvents()) {
+//		log().info(_loop.tickCount(), ": hit ", hit.entities[0].name(),
+//		        ", ", hit.entities[1].name(), ", ", hit.penetration.transpose());
+//	}
 
-	int   numDashes = 1;
-	int   dashTicks = 15;
-	float dashSpeed = 32   * TILE_SIZE * TICK_LENGTH_IN_SEC;
-
-	float minx = 24;
-	float maxx = window()->width() - 24;
-	float miny = 0;
-	float maxy = window()->height() - 48;
-
-	Vector2 playerPos = _player.position2();
-
-	unsigned playerHit = 0;
-	if(playerPos(0) <= minx)
-		playerHit |= DIR_LEFT;
-	if(playerPos(0) >= maxx)
-		playerHit |= DIR_RIGHT;
-	if(playerPos(1) <= miny)
-		playerHit |= DIR_DOWN;
-	if(playerPos(1) >= maxy)
-		playerHit |= DIR_UP;
-
-//	log().info(_loop.tickCount(), ": p: ", playerPos.transpose(), ", v: ", _playerVelocity.transpose(),
-//	           ", h: ", playerHit);
-
-	bool onGround = playerHit & DIR_DOWN;
-	bool onWall   = playerHit & (DIR_LEFT | DIR_RIGHT);
-	bool isDashing = _dashDuration < dashTicks;
-
-	bool moveLeft  = _leftInput->isPressed();
-	bool moveRight = _rightInput->isPressed();
-	if(_leftInput->justPressed() || (moveLeft && !moveRight))
-		_playerMoveDir = DIR_LEFT;
-	else if(_rightInput->justPressed() || (!moveLeft && moveRight))
-		_playerMoveDir = DIR_RIGHT;
-	else if(!moveLeft && !moveRight)
-		_playerMoveDir = DIR_NONE;
-
-	if(!isDashing && _playerMoveDir != DIR_NONE)
-		_playerDir = _playerMoveDir;
-
-	if(!isDashing && !onGround && onWall) {
-		_playerDir = (playerHit & DIR_LEFT)? DIR_RIGHT: DIR_LEFT;
-	}
-
-	if(playerHit & (DIR_LEFT | DIR_RIGHT)) {
-		_dashDuration = dashTicks;
-	}
-
-	if(_dashInput->justPressed() && _dashCount > 0) {
-		_dashDuration = 0;
-		_dashCount -= 1;
-	}
-
-	if(_dashDuration < dashTicks) {
-		playerPos(0)  += (_playerDir == DIR_LEFT)? -dashSpeed: dashSpeed;
-		_playerVelocity(0) = (_playerDir == DIR_LEFT)? -maxSpeed: maxSpeed;
-		_playerVelocity(1) = 0;
-		_dashDuration += 1;
-	}
-	else {
-		Vector2 acceleration = Vector2::Zero();
-
-		float targetXSpeed = (_playerMoveDir == DIR_LEFT)?  -maxSpeed:
-							 (_playerMoveDir == DIR_RIGHT)?  maxSpeed: 0.f;
-		float diff = targetXSpeed - _playerVelocity(0);
-		if(_wallJumpDir == DIR_NONE && (
-					onGround ||
-					(_playerMoveDir == DIR_LEFT  && _playerVelocity(0) > -maxSpeed) ||
-					(_playerMoveDir == DIR_RIGHT && _playerVelocity(0) <  maxSpeed))) {
-			float accel = onGround? playerAccel: airControl;
-			if(diff < 0)
-				acceleration(0) = std::max(-accel, diff);
-			else
-				acceleration(0) = std::min( accel, diff);
-		}
-
-		if(onGround || onWall) {
-			_jumpCount = numJumps;
-			_wallJumpDir = DIR_NONE;
-			_dashCount = numDashes;
-		}
-		if(onGround) {
-			_jumpDuration = jumpTicks;
-		}
-
-		static float maxHeight = 0;
-		maxHeight = std::max(maxHeight, playerPos(1));
-		acceleration(1) = std::max(-gravity, -(onWall? maxWallFallSpeed: maxFallSpeed) - _playerVelocity(1));
-		if(_jumpInput->justPressed() && _jumpCount > 0) {
-			maxHeight = 0;
-			_playerVelocity(1) = 0;
-			_wallJumpDir = onGround?                DIR_NONE:
-						   (playerHit & DIR_LEFT)?  DIR_RIGHT:
-						   (playerHit & DIR_RIGHT)? DIR_LEFT: DIR_NONE;
-			_jumpDuration = 0;
-			_jumpCount -= 1;
-		}
-
-		if(_jumpDuration < jumpTicks) {
-			if(_jumpInput->isPressed()) {
-				_playerVelocity(1) += jumpAccel;
-				if(_wallJumpDir == DIR_LEFT)
-					_playerVelocity(0) -= wallJumpAccel;
-				if(_wallJumpDir == DIR_RIGHT)
-					_playerVelocity(0) += wallJumpAccel;
-				_jumpDuration += 1;
-			}
-			else {
-				_jumpDuration = jumpTicks;
-			}
-		}
-
-		if(_jumpDuration >= jumpTicks) {
-			_wallJumpDir = DIR_NONE;
-		}
-
-		log().info("Jump: c: ", _jumpCount, ", d: ", _jumpDuration, ", w", _wallJumpDir, ", h: ", playerHit);
-
-		_playerVelocity += acceleration;
-		playerPos       += _playerVelocity;
-	}
-
-	playerHit = 0;
-	if(playerPos(0) <= minx)
-		playerHit |= DIR_LEFT;
-	if(playerPos(0) >= maxx)
-		playerHit |= DIR_RIGHT;
-	if(playerPos(1) <= miny)
-		playerHit |= DIR_DOWN;
-	if(playerPos(1) >= maxy)
-		playerHit |= DIR_UP;
-
-	if(playerHit & DIR_LEFT) {
-		playerPos(0) = minx;
-		_playerVelocity(0) = std::max(_playerVelocity(0), 0.f);
-	}
-	if(playerHit & DIR_RIGHT) {
-		playerPos(0) = maxx;
-		_playerVelocity(0) = std::min(_playerVelocity(0), 0.f);
-	}
-	if(playerHit & DIR_DOWN) {
-		playerPos(1) = miny;
-		_playerVelocity(1) = std::max(_playerVelocity(1), 0.f);
-	}
-	if(playerHit & DIR_UP) {
-		playerPos(1) = maxy;
-		_playerVelocity(1) = std::min(_playerVelocity(1), 0.f);
-	}
-
-	SpriteComponent* playerSprite = _sprites.get(_player);
-	playerSprite->setTileIndex((_playerDir == DIR_LEFT)? 12: 8);
-
-	_player.moveTo(playerPos);
+	_characters.processCollisions();
 
 	_entities.updateWorldTransforms();
 }
 
 
 void MainState::updateFrame() {
+	// Update camera
+
+	Vector3 c;
+	c << _player.interpPosition2(_loop.frameInterp()), .5;
+	Vector3 h(960, 540, .5);
+	Box3 viewBox(c - h, c + h);
+	_camera.setViewBox(viewBox);
+
 	// Rendering
 	Context* glc = renderer()->context();
 
@@ -421,7 +308,7 @@ void MainState::updateFrame() {
 
 void MainState::resizeEvent() {
 	Box3 viewBox(Vector3::Zero(),
-	             Vector3(window()->width(), // Big pixels
+	             Vector3(window()->width(),
 	                     window()->height(), 1));
 	_camera.setViewBox(viewBox);
 }

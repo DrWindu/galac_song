@@ -32,6 +32,8 @@ include_directories(
 add_executable(${CMAKE_PROJECT_NAME}
 	main.cpp
 	game.cpp
+	components.cpp
+	level.cpp
 	main_state.cpp
 	splash_state.cpp
 )

@@ -35,38 +35,36 @@
 
 #include <lair/ec/entity.h>
 #include <lair/ec/entity_manager.h>
+#include <lair/ec/collision_component.h>
 #include <lair/ec/sprite_component.h>
 #include <lair/ec/bitmap_text_component.h>
 #include <lair/ec/tile_layer_component.h>
+
+#include "components.h"
 
 
 using namespace lair;
 
 
 class Game;
+class Level;
+
+typedef std::shared_ptr<Level> LevelSP;
 
 enum {
-	TILE_SIZE      = 48,
 	TICKS_PER_SEC  = 60,
 	FRAMES_PER_SEC = 60,
 };
 
 extern const float TICK_LENGTH_IN_SEC;
 
-enum HitFlags {
-	HIT_SOLID     = 0x01,
-	HIT_PLAYER    = 0x02,
-	HIT_CHARACTER = 0x04,
-	HIT_TRIGGER   = 0x08,
-};
-
-enum Direction {
-	DIR_NONE  = 0x00,
-	DIR_RIGHT = 0x01,
-	DIR_UP    = 0x02,
-	DIR_LEFT  = 0x04,
-	DIR_DOWN  = 0x08,
-};
+//enum DirFlags {
+//	DIR_NONE  = 0x00,
+//	DIR_RIGHT = 0x01,
+//	DIR_UP    = 0x02,
+//	DIR_LEFT  = 0x04,
+//	DIR_DOWN  = 0x08,
+//};
 
 
 class MainState : public GameState {
@@ -91,7 +89,7 @@ public:
 	bool loadEntities(const Path& path, EntityRef parent = EntityRef(),
 	                  const Path& cd = Path());
 
-protected:
+public:
 	// More or less system stuff
 
 	RenderPass                 _mainPass;
@@ -99,6 +97,8 @@ protected:
 	EntityManager              _entities;
 	SpriteRenderer             _spriteRenderer;
 	SpriteComponentManager     _sprites;
+	CollisionComponentManager  _collisions;
+	CharacterComponentManager  _characters;
 	BitmapTextComponentManager _texts;
 	TileLayerComponentManager  _tileLayers;
 //	AnimationComponentManager  _anims;
@@ -117,24 +117,27 @@ protected:
 	Input*      _quitInput;
 	Input*      _leftInput;
 	Input*      _rightInput;
+	Input*      _downInput;
+	Input*      _upInput;
 	Input*      _jumpInput;
 	Input*      _dashInput;
 
-	TileMapAspectSP _tileMap;
+	LevelSP _level;
 
 	EntityRef   _models;
 
 	EntityRef   _playerModel;
-	Vector2     _playerVelocity;
-	Direction   _playerMoveDir;
-	int         _jumpDuration;
-	int         _jumpCount;
-	Direction   _wallJumpDir;
-	int         _dashDuration;
-	int         _dashCount;
-	Direction   _playerDir;
-	unsigned    _playerAnim;
-	float       _playerAnimTime;
+	CharPhysicsParamsSP _playerPhysics;
+//	Vector2     _playerVelocity;
+//	DirFlags    _playerMoveDir;
+//	int         _jumpDuration;
+//	int         _jumpCount;
+//	DirFlags    _wallJumpDir;
+//	int         _dashDuration;
+//	int         _dashCount;
+//	DirFlags    _playerDir;
+//	unsigned    _playerAnim;
+//	float       _playerAnimTime;
 
 	EntityRef   _tileLayer;
 
