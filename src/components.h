@@ -94,6 +94,7 @@ struct CharPhysicsParams {
 	float jumpAccel;
 	float maxFallSpeed;
 
+	bool  wallJump;
 	float wallJumpAccel;
 	float maxWallFallSpeed;
 

@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <map version="1.0" tiledversion="1.0.2" orientation="orthogonal" renderorder="right-down" width="240" height="90" tilewidth="24" tileheight="24" nextobjectid="68">
+ <properties>
+  <property name="dash" type="bool" value="true"/>
+  <property name="double_jump" type="bool" value="true"/>
+  <property name="wall_jump" type="bool" value="true"/>
+ </properties>
  <tileset firstgid="1" source="tileset.tsx"/>
  <layer name="Tile Layer 1" width="240" height="90">
   <data encoding="csv">

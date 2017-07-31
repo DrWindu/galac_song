@@ -189,7 +189,7 @@ void CharacterComponentManager::updatePhysics() {
 		if(!isDashing && c.moveDir != DIR_NONE)
 			c.lookDir = c.moveDir;
 
-		if(!isDashing && !onGround && onWall) {
+		if(p->wallJump && !isDashing && !onGround && onWall) {
 			c.lookDir = (c.touchDir & DIR_LEFT)? DIR_RIGHT: DIR_LEFT;
 		}
 
@@ -226,7 +226,7 @@ void CharacterComponentManager::updatePhysics() {
 					acceleration(0) = std::min( accel, diff);
 			}
 
-			if(c.jumpDuration >= p->jumpTicks && (onGround || onWall)) {
+			if(c.jumpDuration >= p->jumpTicks && (onGround || (p->wallJump && onWall))) {
 				c.jumpCount = p->numJumps;
 				c.wallJumpDir = DIR_NONE;
 				c.dashCount = p->numDashes;
@@ -237,17 +237,18 @@ void CharacterComponentManager::updatePhysics() {
 
 			static float maxHeight = 0;
 			maxHeight = std::max(maxHeight, pos(1));
-			acceleration(1) = std::max(-p->gravity, -(onWall? p->maxWallFallSpeed: p->maxFallSpeed) - c.velocity(1));
+			acceleration(1) = std::max(-p->gravity, -((p->wallJump && onWall)? p->maxWallFallSpeed: p->maxFallSpeed) - c.velocity(1));
 
 			bool justPressedJump = c.jumpPressed && !c.prevJumpPressed;
-			if(justPressedJump && c.jumpCount > 0) {
+			if(justPressedJump && (onGround || (p->wallJump && onWall) || c.jumpCount > 0)) {
 				maxHeight = 0;
 				c.velocity(1) = 0;
-				c.wallJumpDir = onGround?                DIR_NONE:
-							   (c.touchDir & DIR_LEFT)?  DIR_RIGHT:
-							   (c.touchDir & DIR_RIGHT)? DIR_LEFT: DIR_NONE;
+				c.wallJumpDir = (!p->wallJump || onGround)? DIR_NONE:
+							    (c.touchDir & DIR_LEFT)?    DIR_RIGHT:
+							    (c.touchDir & DIR_RIGHT)?   DIR_LEFT: DIR_NONE;
 				c.jumpDuration = 0;
-				c.jumpCount -= 1;
+				if(!onGround && !(p->wallJump && onWall))
+					c.jumpCount -= 1;
 			}
 
 			if(c.jumpDuration < p->jumpTicks) {

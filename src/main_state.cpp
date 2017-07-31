@@ -157,7 +157,7 @@ void MainState::initialize() {
 	_playerPhysics->playerAccel  = _playerPhysics->maxSpeed / _playerPhysics->accelTime;
 	_playerPhysics->airControl   =  0.5 * _playerPhysics->playerAccel;
 
-	_playerPhysics->numJumps     = 2;
+	_playerPhysics->numJumps     = 1;
 	_playerPhysics->jumpTicks    = 10;
 //	_playerPhysics->gravity      = 32 * tileSize * TICK_LENGTH_IN_SEC * TICK_LENGTH_IN_SEC;
 //	_playerPhysics->jumpSpeed    = 19 * tileSize * TICK_LENGTH_IN_SEC;
@@ -166,7 +166,8 @@ void MainState::initialize() {
 	_playerPhysics->jumpAccel    = _playerPhysics->jumpSpeed / _playerPhysics->jumpTicks;
 	_playerPhysics->maxFallSpeed = _playerPhysics->jumpSpeed;
 
-	_playerPhysics->wallJumpAccel = 0.4 * _playerPhysics->jumpAccel;
+	_playerPhysics->wallJump         = true;
+	_playerPhysics->wallJumpAccel    = 0.4 * _playerPhysics->jumpAccel;
 	_playerPhysics->maxWallFallSpeed = 0.35 * _playerPhysics->maxFallSpeed;
 
 	_playerPhysics->numDashes = 1;
@@ -321,6 +322,11 @@ void MainState::loadLevel(const Path& level, const String& spawn) {
 
 	_level = _levelMap.at(level);
 	_level->initialize();
+
+	const Json::Value& props = _level->tileMap()->properties();
+	_playerPhysics->numJumps  = props.get("double_jump", true).asBool()? 1: 0;
+	_playerPhysics->numDashes = props.get("dash", true).asBool()? 1: 0;
+	_playerPhysics->wallJump  = props.get("wall_jump", true).asBool();
 
 	_player = _entities.cloneEntity(_playerModel, _scene, "player");
 	CharacterComponent* pChar = _characters.addComponent(_player);
