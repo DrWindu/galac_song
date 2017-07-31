@@ -77,6 +77,7 @@ TriggerComponentManager::TriggerComponentManager()
 CharacterComponent::CharacterComponent(Manager* manager, _Entity* entity)
 	: Component(manager, entity)
     , lookDir(DIR_RIGHT)
+    , animation(nullptr)
 {
 	reset();
 }
@@ -94,6 +95,20 @@ void CharacterComponent::pressJump(bool press) {
 
 void CharacterComponent::pressDash(bool press) {
 	dashPressed = press;
+}
+
+
+void CharacterComponent::playAnimation(const CharAnimation* anim) {
+	if(animation != anim) {
+		dbgLogger.info("Play animation ", anim->name);
+		animation = anim;
+		animTime = 0;
+	}
+}
+
+
+bool CharacterComponent::animationDone() const {
+	return animTime * animation->fps >= animation->frames.size();
 }
 
 
@@ -141,7 +156,30 @@ const PropertyList& CharacterComponent::properties() {
 CharacterComponentManager::CharacterComponentManager(MainState* mainState)
     : DenseComponentManager<CharacterComponent>("character", 128)
     , _mainState(mainState)
+    , _idleAnim("idle", 4)
+    , _walkAnim("walk", 4)
+    , _jumpAnim("jump", 8, false)
+    , _dashAnim("dash", 8)
+    , _onWallAnim("onWall", 4)
+    , _wallJumpAnim("wallJump", 8, false)
 {
+	_idleAnim.frames.push_back(0);
+
+	_walkAnim.frames.push_back(1);
+	_walkAnim.frames.push_back(0);
+
+	_jumpAnim.frames.push_back(8);
+	_jumpAnim.frames.push_back(7);
+	_jumpAnim.frames.push_back(6);
+
+	_dashAnim.frames.push_back(4);
+	_dashAnim.frames.push_back(5);
+
+	_onWallAnim.frames.push_back(14);
+
+	_wallJumpAnim.frames.push_back(15);
+	_wallJumpAnim.frames.push_back(14);
+	_wallJumpAnim.frames.push_back(10);
 }
 
 
@@ -186,7 +224,28 @@ void CharacterComponentManager::updatePhysics() {
 		else if(!moveLeft && !moveRight)
 			c.moveDir = DIR_NONE;
 
-		if(!isDashing && c.moveDir != DIR_NONE)
+		if(!isDashing) {
+			if(onGround) {
+				if(c.moveDir == DIR_NONE)
+					c.playAnimation(&_idleAnim);
+				if(c.moveDir != DIR_NONE)
+					c.playAnimation(&_walkAnim);
+			}
+
+			if((   c.animation == &_jumpAnim
+			    || c.animation == &_wallJumpAnim
+			    || c.animation == &_dashAnim)
+			&& c.animationDone())
+				c.playAnimation(&_idleAnim);
+
+			if(!onGround && onWall && p->wallJump)
+				c.playAnimation(&_onWallAnim);
+			if(c.animation == &_onWallAnim && !onWall)
+				c.playAnimation(&_idleAnim);
+		}
+
+		if(!isDashing && c.moveDir != DIR_NONE
+		&& (c.wallJumpDir == DIR_NONE || c.jumpDuration >= p->jumpTicks))
 			c.lookDir = c.moveDir;
 
 		if(p->wallJump && !isDashing && !onGround && onWall) {
@@ -200,6 +259,7 @@ void CharacterComponentManager::updatePhysics() {
 		if(c.dashPressed && c.dashCount > 0) {
 			c.dashDuration = 0;
 			c.dashCount -= 1;
+			c.playAnimation(&_dashAnim);
 		}
 		c.dashPressed = false;
 
@@ -249,6 +309,11 @@ void CharacterComponentManager::updatePhysics() {
 				c.jumpDuration = 0;
 				if(!onGround && !(p->wallJump && onWall))
 					c.jumpCount -= 1;
+
+				if(c.wallJumpDir != DIR_NONE)
+					c.playAnimation(&_wallJumpAnim);
+				else
+					c.playAnimation(&_jumpAnim);
 			}
 
 			if(c.jumpDuration < p->jumpTicks) {
@@ -282,8 +347,23 @@ void CharacterComponentManager::updatePhysics() {
 				cc->setDirty();
 		}
 
-		SpriteComponent* sprite = _mainState->_sprites.get(c.entity());
-		sprite->setTileIndex((c.lookDir == DIR_LEFT)? 1: 0);
+		c.entity().transform()(0, 0) = (c.lookDir == DIR_LEFT)? -1: 1;
+		// DIRTY HACK: Make sure the scale is not interpolated !
+		c.entity()._get()->prevWorldTransform(0, 0) = c.entity().transform()(0, 0);
+
+		if(c.animation) {
+			c.animTime += TICK_LENGTH_IN_SEC;
+			unsigned index = unsigned(c.animTime * c.animation->fps);
+			index = c.animation->repeat?
+			            index % c.animation->frames.size():
+			            std::min(index, unsigned(c.animation->frames.size() - 1));
+
+
+			SpriteComponent* sprite = _mainState->_sprites.get(c.entity());
+			if(c.animation->frames[index] != sprite->tileIndex())
+				dbgLogger.info("  anim ", c.animation->name, ": ", index);
+			sprite->setTileIndex(c.animation->frames[index]);
+		}
 
 		c.prevDirPressed  = c.dirPressed;
 		c.prevJumpPressed = c.jumpPressed;

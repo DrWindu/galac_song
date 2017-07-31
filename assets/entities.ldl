@@ -5,10 +5,11 @@ __models__ = {
 			transform = translate(0, 0, 0.5)
 			sprite = {
 				texture       = "player.png"
-				tile_grid     = Vector(2, 1)
+				tile_grid     = Vector(4, 4)
 				tile_index    = 0
-				anchor        = Vector(0.5, 0)
+				anchor        = Vector(0.62, 0)
 				texture_flags = "bilinear_no_mipmap | clamp"
+				blend         = "alpha"
 			}
 			collision = {
 				shape       = ABox{ min = Vector(-22, 0), size = Vector(44, 94) }

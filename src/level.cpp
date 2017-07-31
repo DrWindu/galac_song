@@ -94,7 +94,7 @@ void Level::initialize() {
 	_levelRoot = _mainState->_entities.createEntity(_mainState->_scene, _path.utf8CStr());
 	_levelRoot.setEnabled(false);
 
-	_baseLayer = createLayer(0, "layer_base");
+	_baseLayer = createLayer(_tileMap->nLayers() - 1, "layer_base");
 	_objects = _mainState->_entities.createEntity(_levelRoot, "objects");
 
 	for(unsigned oli = 0; oli < _tileMap->nObjectLayer(); ++oli) {

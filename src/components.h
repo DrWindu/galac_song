@@ -104,6 +104,18 @@ struct CharPhysicsParams {
 };
 typedef std::shared_ptr<CharPhysicsParams> CharPhysicsParamsSP;
 
+struct CharAnimation {
+	inline CharAnimation(const String& name, float fps = 4, bool repeat = true)
+		: name(name)
+	    , fps(fps)
+	    , repeat(repeat)
+	{}
+
+	String name;
+	std::vector<unsigned> frames;
+	float fps;
+	bool repeat;
+};
 
 class CharacterComponent : public Component {
 public:
@@ -121,6 +133,9 @@ public:
 	void pressMove(unsigned directions);
 	void pressJump(bool press = true);
 	void pressDash(bool press = true);
+
+	void playAnimation(const CharAnimation* anim);
+	bool animationDone() const;
 
 	void reset();
 
@@ -151,6 +166,9 @@ public:
 	int      dashDuration;
 	int      dashCount;
 
+	const CharAnimation* animation;
+	float    animTime;
+
 	std::vector<HitEvent> _hits;
 };
 
@@ -164,6 +182,13 @@ public:
 
 public:
 	MainState* _mainState;
+
+	CharAnimation _idleAnim;
+	CharAnimation _walkAnim;
+	CharAnimation _jumpAnim;
+	CharAnimation _dashAnim;
+	CharAnimation _onWallAnim;
+	CharAnimation _wallJumpAnim;
 };
 
 
