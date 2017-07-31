@@ -130,6 +130,7 @@ void MainState::initialize() {
 
 	_models      = _entities.findByName("__models__");
 	_playerModel = _entities.findByName("player_model", _models);
+	_playerDeathModel = _entities.findByName("player_death_model", _models);
 
 	_background  = _entities.findByName("background");
 	_scene       = _entities.findByName("scene");
@@ -332,6 +333,9 @@ void MainState::loadLevel(const Path& level, const String& spawn) {
 	CharacterComponent* pChar = _characters.addComponent(_player);
 	pChar->physics = _playerPhysics;
 
+	_playerDeath = _entities.cloneEntity(_playerDeathModel, _scene, "player_death");
+	_playerDeath.setEnabled(false);
+
 	_spawnName = spawn;
 	_level->start(_spawnName);
 
@@ -407,12 +411,18 @@ void MainState::updateTriggers(bool disableCmds) {
 
 void MainState::killPlayer() {
 	// TODO: animation + sound
-	_level->spawnPlayer(_spawnName);
+	_state = STATE_DEATH;
+	_transitionTime = 0;
+
+	_player.setEnabled(false);
+	_playerDeath.setEnabled(true);
+	_playerDeath.transform() = _player.transform();
+	_sprites.get(_playerDeath)->setTileIndex(0);
 }
 
 
 void MainState::startGame() {
-	// TODO: Setup game
+	_state = STATE_PLAY;
 
 	loadLevel(_nextLevel, _nextLevelSpawn);
 	_nextLevel = Path();
@@ -440,31 +450,48 @@ void MainState::updateTick() {
 		quit();
 	}
 
-	// Player input
-	CharacterComponent* pChar = _characters.get(_player);
-	if(_leftInput->isPressed())
-		pChar->pressMove(DIR_LEFT);
-	if(_rightInput->isPressed())
-		pChar->pressMove(DIR_RIGHT);
-	if(_downInput->isPressed())
-		pChar->pressMove(DIR_DOWN);
-	if(_upInput->isPressed())
-		pChar->pressMove(DIR_UP);
-	pChar->pressJump(_jumpInput->isPressed());
-	pChar->pressDash(_dashInput->justPressed());
+	if(_state == STATE_PLAY) {
+		// Player input
+		CharacterComponent* pChar = _characters.get(_player);
+		if(_leftInput->isPressed())
+			pChar->pressMove(DIR_LEFT);
+		if(_rightInput->isPressed())
+			pChar->pressMove(DIR_RIGHT);
+		if(_downInput->isPressed())
+			pChar->pressMove(DIR_DOWN);
+		if(_upInput->isPressed())
+			pChar->pressMove(DIR_UP);
+		pChar->pressJump(_jumpInput->isPressed());
+		pChar->pressDash(_dashInput->justPressed());
 
-	// Update components
-	_characters.updatePhysics();
+		// Update components
+		_characters.updatePhysics();
 
-	_entities.updateWorldTransforms();
-	_collisions.findCollisions();
-//	for(const HitEvent& hit: _collisions.hitEvents()) {
-//		log().info(_loop.tickCount(), ": hit ", hit.entities[0].name(),
-//		        ", ", hit.entities[1].name(), ", ", hit.penetration.transpose());
-//	}
+		_entities.updateWorldTransforms();
+		_collisions.findCollisions();
+	//	for(const HitEvent& hit: _collisions.hitEvents()) {
+	//		log().info(_loop.tickCount(), ": hit ", hit.entities[0].name(),
+	//		        ", ", hit.entities[1].name(), ", ", hit.penetration.transpose());
+	//	}
 
-	_characters.processCollisions();
-	updateTriggers();
+		_characters.processCollisions();
+		updateTriggers();
+	}
+	else if(_state == STATE_DEATH) {
+		_transitionTime += TICK_LENGTH_IN_SEC;
+		int index = _transitionTime * 6;
+
+		SpriteComponent* sprite = _sprites.get(_playerDeath);
+		if(index < sprite->tileGridSize().prod()) {
+			sprite->setTileIndex(index);
+		}
+		else {
+			_state = STATE_PLAY;
+			_player.setEnabled(true);
+			_playerDeath.setEnabled(false);
+			_level->spawnPlayer(_spawnName);
+		}
+	}
 
 	_entities.updateWorldTransforms();
 }

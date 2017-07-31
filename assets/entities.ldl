@@ -19,6 +19,16 @@ __models__ = {
 				ignore_mask = 0x04
 			}
 		}
+		player_death_model = {
+			sprite = {
+				texture       = "death.png"
+				tile_grid     = Vector(3, 2)
+				tile_index    = 0
+				anchor        = Vector(0.14166, 0)
+				texture_flags = "bilinear_no_mipmap | clamp"
+				blend         = "alpha"
+			}
+		}
 	}
 }
 

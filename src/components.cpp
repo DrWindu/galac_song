@@ -100,7 +100,7 @@ void CharacterComponent::pressDash(bool press) {
 
 void CharacterComponent::playAnimation(const CharAnimation* anim) {
 	if(animation != anim) {
-		dbgLogger.info("Play animation ", anim->name);
+//		dbgLogger.info("Play animation ", anim->name);
 		animation = anim;
 		animTime = 0;
 	}
@@ -360,8 +360,8 @@ void CharacterComponentManager::updatePhysics() {
 
 
 			SpriteComponent* sprite = _mainState->_sprites.get(c.entity());
-			if(c.animation->frames[index] != sprite->tileIndex())
-				dbgLogger.info("  anim ", c.animation->name, ": ", index);
+//			if(c.animation->frames[index] != sprite->tileIndex())
+//				dbgLogger.info("  anim ", c.animation->name, ": ", index);
 			sprite->setTileIndex(c.animation->frames[index]);
 		}
 

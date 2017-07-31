@@ -70,6 +70,12 @@ struct CommandExpr {
 typedef std::deque<CommandExpr> CommandList;
 
 
+enum State {
+	STATE_PLAY,
+	STATE_DEATH,
+};
+
+
 class MainState : public GameState {
 public:
 	MainState(Game* game);
@@ -146,6 +152,9 @@ public:
 	Input*      _jumpInput;
 	Input*      _dashInput;
 
+	State    _state;
+	float    _transitionTime;
+
 	LevelMap _levelMap;
 	LevelSP  _level;
 	String   _spawnName;
@@ -156,22 +165,14 @@ public:
 
 	EntityRef   _playerModel;
 	CharPhysicsParamsSP _playerPhysics;
-//	Vector2     _playerVelocity;
-//	DirFlags    _playerMoveDir;
-//	int         _jumpDuration;
-//	int         _jumpCount;
-//	DirFlags    _wallJumpDir;
-//	int         _dashDuration;
-//	int         _dashCount;
-//	DirFlags    _playerDir;
-//	unsigned    _playerAnim;
-//	float       _playerAnimTime;
+	EntityRef   _playerDeathModel;
 
 	EntityRef   _tileLayer;
 
 	EntityRef   _background;
 	EntityRef   _scene;
 	EntityRef   _player;
+	EntityRef   _playerDeath;
 
 	EntityRef   _gui;
 };
