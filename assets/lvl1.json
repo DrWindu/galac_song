@@ -6,7 +6,7 @@
          "name":"level",
          "opacity":1,
          "type":"tilelayer",
-         "visible":false,
+         "visible":true,
          "width":240,
          "x":0,
          "y":0
@@ -100,7 +100,7 @@
                  "name":"next_level",
                  "properties":
                     {
-                     "on_enter":"next_level test_map.json"
+                     "on_enter":"next_level lvl2.json"
                     },
                  "propertytypes":
                     {
@@ -919,7 +919,7 @@
                 }],
          "opacity":1,
          "type":"objectgroup",
-         "visible":false,
+         "visible":true,
          "x":0,
          "y":0
         }, 
@@ -938,14 +938,18 @@
  "orientation":"orthogonal",
  "properties":
     {
+     "background":"background1.png",
      "dash":true,
      "double_jump":true,
+     "tileset":"tileset.png",
      "wall_jump":true
     },
  "propertytypes":
     {
+     "background":"string",
      "dash":"bool",
      "double_jump":"bool",
+     "tileset":"string",
      "wall_jump":"bool"
     },
  "renderorder":"right-down",

@@ -77,9 +77,9 @@ int nextLevelCommand(MainState* state, EntityRef self, int argc, const char** ar
 	}
 
 	if(argc == 2)
-		state->startLevel(argv[1]);
+		state->changeLevel(argv[1]);
 	else
-		state->startLevel(argv[1], argv[2]);
+		state->changeLevel(argv[1], argv[2]);
 
 	return 0;
 }

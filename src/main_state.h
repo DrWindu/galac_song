@@ -59,6 +59,7 @@ enum {
 };
 
 extern const float TICK_LENGTH_IN_SEC;
+extern const float FADE_DURATION;
 
 typedef int (*Command)(MainState* state, EntityRef self, int argc, const char** argv);
 typedef std::unordered_map<std::string, Command> CommandMap;
@@ -73,6 +74,8 @@ typedef std::deque<CommandExpr> CommandList;
 enum State {
 	STATE_PLAY,
 	STATE_DEATH,
+	STATE_FADE_IN,
+	STATE_FADE_OUT,
 };
 
 
@@ -95,9 +98,15 @@ public:
 	int execSingle(const std::string& cmd, EntityRef self = EntityRef());
 	int exec(int argc, const char** argv, EntityRef self = EntityRef());
 
+	void setState(State state);
+
 	LevelSP registerLevel(const Path& level);
 	void loadLevel(const Path& level, const String& spawn = "spawn");
-	void startLevel(const Path& level, const String& spawn = "spawn");
+	void setNextLevel(const Path& level, const String& spawn = "spawn");
+	void changeLevel(const Path& level, const String& spawn = "spawn");
+
+	void registerSound(const Path& sound);
+	void playSound(const Path& sound);
 
 	EntityRef getEntity(const String& name, const EntityRef& ancestor = EntityRef());
 	EntityRef createTrigger(EntityRef parent, const char* name, const Box2& box);
@@ -175,6 +184,7 @@ public:
 	EntityRef   _playerDeath;
 
 	EntityRef   _gui;
+	EntityRef   _fadeOverlay;
 };
 
 

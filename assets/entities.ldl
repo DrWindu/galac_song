@@ -47,5 +47,18 @@ scene = {
 }
 
 gui = {
-	transform = translate(0, 0, 0)
+	transform = translate(0, 0, 0.9)
+	children = {
+		fade_overlay = {
+			enabled = false
+			sprite = {
+				texture       = "white.png"
+				tile_grid     = Vector(1, 1)
+				tile_index    = 0
+				anchor        = Vector(0, 0)
+				texture_flags = "nearest_no_mipmap | clamp"
+				blend         = "alpha"
+			}
+		}
+	}
 }

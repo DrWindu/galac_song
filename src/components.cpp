@@ -260,6 +260,7 @@ void CharacterComponentManager::updatePhysics() {
 			c.dashDuration = 0;
 			c.dashCount -= 1;
 			c.playAnimation(&_dashAnim);
+			_mainState->playSound("dash.wav");
 		}
 		c.dashPressed = false;
 
@@ -314,6 +315,8 @@ void CharacterComponentManager::updatePhysics() {
 					c.playAnimation(&_wallJumpAnim);
 				else
 					c.playAnimation(&_jumpAnim);
+
+				_mainState->playSound("jump.wav");
 			}
 
 			if(c.jumpDuration < p->jumpTicks) {
