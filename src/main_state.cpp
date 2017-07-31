@@ -85,11 +85,12 @@ MainState::MainState(Game* game)
 	_entities.registerComponentManager(&_texts);
 	_entities.registerComponentManager(&_tileLayers);
 
-	_commands.emplace("echo",      echoCommand);
-	_commands.emplace("set_spawn", setSpawnCommand);
-	_commands.emplace("kill",      killCommand);
-	_commands.emplace("disable",   disableCommand);
-	_commands.emplace("credits",   creditsCommand);
+	_commands.emplace("echo",       echoCommand);
+	_commands.emplace("set_spawn",  setSpawnCommand);
+	_commands.emplace("kill",       killCommand);
+	_commands.emplace("next_level", nextLevelCommand);
+	_commands.emplace("disable",    disableCommand);
+	_commands.emplace("credits",    creditsCommand);
 }
 
 
@@ -136,6 +137,7 @@ void MainState::initialize() {
 
 	registerLevel("test_map.json");
 	registerLevel("lvl1.json");
+	startLevel("lvl1.json");
 
 //	loader()->load<SoundLoader>("sound.ogg");
 //	//loader()->load<MusicLoader>("music.ogg");
@@ -157,13 +159,15 @@ void MainState::initialize() {
 
 	_playerPhysics->numJumps     = 2;
 	_playerPhysics->jumpTicks    = 10;
-	_playerPhysics->gravity      = 32 * tileSize * TICK_LENGTH_IN_SEC * TICK_LENGTH_IN_SEC;
-	_playerPhysics->jumpSpeed    = 19 * tileSize * TICK_LENGTH_IN_SEC;
+//	_playerPhysics->gravity      = 32 * tileSize * TICK_LENGTH_IN_SEC * TICK_LENGTH_IN_SEC;
+//	_playerPhysics->jumpSpeed    = 19 * tileSize * TICK_LENGTH_IN_SEC;
+	_playerPhysics->gravity      = 48 * tileSize * TICK_LENGTH_IN_SEC * TICK_LENGTH_IN_SEC;
+	_playerPhysics->jumpSpeed    = 24.2 * tileSize * TICK_LENGTH_IN_SEC;
 	_playerPhysics->jumpAccel    = _playerPhysics->jumpSpeed / _playerPhysics->jumpTicks;
 	_playerPhysics->maxFallSpeed = _playerPhysics->jumpSpeed;
 
-	_playerPhysics->wallJumpAccel = 0.5 * _playerPhysics->jumpAccel;
-	_playerPhysics->maxWallFallSpeed = 0.25 * _playerPhysics->maxFallSpeed;
+	_playerPhysics->wallJumpAccel = 0.4 * _playerPhysics->jumpAccel;
+	_playerPhysics->maxWallFallSpeed = 0.35 * _playerPhysics->maxFallSpeed;
 
 	_playerPhysics->numDashes = 1;
 	_playerPhysics->dashTicks = 8;
@@ -324,6 +328,14 @@ void MainState::loadLevel(const Path& level, const String& spawn) {
 
 	_spawnName = spawn;
 	_level->start(_spawnName);
+
+	dumpEntityTree(log(), _entities.root());
+}
+
+
+void MainState::startLevel(const Path& level, const String& spawn) {
+	_nextLevel = level;
+	_nextLevelSpawn = spawn;
 }
 
 
@@ -396,7 +408,9 @@ void MainState::killPlayer() {
 void MainState::startGame() {
 	// TODO: Setup game
 
-	dumpEntityTree(log(), _entities.root());
+	loadLevel(_nextLevel, _nextLevelSpawn);
+	_nextLevel = Path();
+	_nextLevelSpawn.clear();
 
 	//audio()->playMusic(assets()->getAsset("music.ogg"));
 //	audio()->playSound(assets()->getAsset("sound.ogg"), 2);
@@ -407,6 +421,13 @@ void MainState::updateTick() {
 	loader()->finalizePending();
 
 	_inputs.sync();
+
+	if(!_nextLevel.empty()) {
+		loadLevel(_nextLevel, _nextLevelSpawn);
+		_nextLevel = Path();
+		_nextLevelSpawn.clear();
+	}
+
 	_entities.setPrevWorldTransforms();
 
 	if(_quitInput->justPressed()) {

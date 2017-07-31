@@ -70,19 +70,19 @@ int killCommand(MainState* state, EntityRef self, int argc, const char** argv) {
 }
 
 
-//int nextLevelCommand(MainState* state, EntityRef self, int argc, const char** argv) {
-//	if(argc != 2 && argc != 3) {
-//		dbgLogger.warning("nextLevelCommand: wrong number of argument.");
-//		return -2;
-//	}
+int nextLevelCommand(MainState* state, EntityRef self, int argc, const char** argv) {
+	if(argc != 2 && argc != 3) {
+		dbgLogger.warning("nextLevelCommand: wrong number of argument.");
+		return -2;
+	}
 
-////	if(argc == 2)
-////		state->startLevel(argv[1]);
-////	else
-////		state->startLevel(argv[1], argv[2]);
+	if(argc == 2)
+		state->startLevel(argv[1]);
+	else
+		state->startLevel(argv[1], argv[2]);
 
-//	return 0;
-//}
+	return 0;
+}
 
 
 //int playSoundCommand(MainState* state, EntityRef self, int argc, const char** argv) {

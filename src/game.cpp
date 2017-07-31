@@ -81,7 +81,7 @@ void Game::initialize() {
 
 	_splashState->initialize();
 	_mainState->initialize();
-	_mainState->loadLevel(_levelPath, _spawnName);
+	_mainState->startLevel(_levelPath, _spawnName);
 
 	_splashState->setup(_mainState.get(), "lair.png", 3);
 }

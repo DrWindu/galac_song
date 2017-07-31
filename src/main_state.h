@@ -91,6 +91,7 @@ public:
 
 	LevelSP registerLevel(const Path& level);
 	void loadLevel(const Path& level, const String& spawn = "spawn");
+	void startLevel(const Path& level, const String& spawn = "spawn");
 
 	EntityRef getEntity(const String& name, const EntityRef& ancestor = EntityRef());
 	EntityRef createTrigger(EntityRef parent, const char* name, const Box2& box);
@@ -148,6 +149,8 @@ public:
 	LevelMap _levelMap;
 	LevelSP  _level;
 	String   _spawnName;
+	Path     _nextLevel;
+	String   _nextLevelSpawn;
 
 	EntityRef   _models;
 

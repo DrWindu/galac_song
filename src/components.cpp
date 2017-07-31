@@ -146,6 +146,8 @@ CharacterComponentManager::CharacterComponentManager(MainState* mainState)
 
 
 void CharacterComponentManager::updatePhysics() {
+	compactArray();
+
 	for(unsigned ci = 0; ci < nComponents(); ++ci) {
 		CharacterComponent& c = _components[ci];
 
@@ -156,8 +158,8 @@ void CharacterComponentManager::updatePhysics() {
 
 		Vector2 pos = c.entity().position2();
 
-	//	log().info(_loop.tickCount(), ": p: ", playerPos.transpose(), ", v: ", c.velocity.transpose(),
-	//	           ", h: ", c.touchDir);
+//		dbgLogger.info(_mainState->_loop.tickCount(), ": p: ", pos.transpose(), ", v: ", c.velocity.transpose(),
+//		           ", h: ", c.touchDir);
 
 //		float speed = 2;
 //		if(c.dirPressed & DIR_LEFT)
