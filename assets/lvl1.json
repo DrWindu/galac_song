@@ -939,6 +939,82 @@
                  "width":288,
                  "x":696,
                  "y":1728
+                }, 
+                {
+                 "height":48,
+                 "id":70,
+                 "name":"tuto",
+                 "properties":
+                    {
+                     "sprite":"tuto_move.png"
+                    },
+                 "propertytypes":
+                    {
+                     "sprite":"string"
+                    },
+                 "rotation":0,
+                 "type":"trigger",
+                 "visible":true,
+                 "width":48,
+                 "x":1104,
+                 "y":2016
+                }, 
+                {
+                 "height":48,
+                 "id":72,
+                 "name":"tuto",
+                 "properties":
+                    {
+                     "sprite":"tuto_dash.png"
+                    },
+                 "propertytypes":
+                    {
+                     "sprite":"string"
+                    },
+                 "rotation":0,
+                 "type":"trigger",
+                 "visible":true,
+                 "width":48,
+                 "x":2712,
+                 "y":1800
+                }, 
+                {
+                 "height":48,
+                 "id":73,
+                 "name":"tuto",
+                 "properties":
+                    {
+                     "sprite":"tuto_wall_jump.png"
+                    },
+                 "propertytypes":
+                    {
+                     "sprite":"string"
+                    },
+                 "rotation":0,
+                 "type":"trigger",
+                 "visible":true,
+                 "width":48,
+                 "x":3696,
+                 "y":1824
+                }, 
+                {
+                 "height":48,
+                 "id":74,
+                 "name":"tuto",
+                 "properties":
+                    {
+                     "sprite":"tuto_double_jump.png"
+                    },
+                 "propertytypes":
+                    {
+                     "sprite":"string"
+                    },
+                 "rotation":0,
+                 "type":"trigger",
+                 "visible":true,
+                 "width":48,
+                 "x":3240,
+                 "y":1104
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -952,12 +1028,12 @@
          "name":"walls",
          "opacity":1,
          "type":"tilelayer",
-         "visible":true,
+         "visible":false,
          "width":240,
          "x":0,
          "y":0
         }],
- "nextobjectid":70,
+ "nextobjectid":75,
  "orientation":"orthogonal",
  "properties":
     {
