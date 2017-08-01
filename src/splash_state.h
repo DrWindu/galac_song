@@ -23,6 +23,8 @@
 #define LD39_SPLASH_STATE_H_
 
 
+#include <deque>
+
 #include <lair/core/signal.h>
 
 #include <lair/utils/game_state.h>
@@ -43,6 +45,7 @@ using namespace lair;
 
 class Game;
 
+typedef std::deque<Path> PathQueue;
 
 class SplashState : public GameState {
 public:
@@ -57,7 +60,10 @@ public:
 
 	Game* game();
 
-	void setup(GameState* nextState, const Path& splashImage, float skipTime = 1.e20);
+	void setNextState(GameState* nextState);
+	void addSplash(const Path& splashImage);
+	bool nextSplash();
+//	void setup(GameState* nextState, const Path& splashImage, float skipTime = 1.e20);
 	void updateTick();
 	void updateFrame();
 
@@ -87,6 +93,7 @@ protected:
 
 	float       _skipTime;
 	GameState*  _nextState;
+	PathQueue   _splashQueue;
 	EntityRef   _splash;
 };
 

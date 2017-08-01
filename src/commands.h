@@ -42,6 +42,8 @@ int setSpawnCommand(MainState* state, EntityRef self, int argc, const char** arg
 int killCommand(MainState* state, EntityRef self, int argc, const char** argv);
 int nextLevelCommand(MainState* state, EntityRef self, int argc, const char** argv);
 int disableCommand(MainState* state, EntityRef self, int argc, const char** argv);
+int noJumpCommand(MainState* state, EntityRef self, int argc, const char** argv);
+int slowCommand(MainState* state, EntityRef self, int argc, const char** argv);
 int creditsCommand(MainState* state, EntityRef self, int argc, const char** argv);
 
 #endif

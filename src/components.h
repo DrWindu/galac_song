@@ -87,6 +87,7 @@ struct CharPhysicsParams {
 	float playerAccel;
 	float airControl;
 
+	bool  jump;
 	int   numJumps;
 	int   jumpTicks;
 	float gravity;

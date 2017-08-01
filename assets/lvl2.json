@@ -808,6 +808,7 @@
      "background":"background2.png",
      "dash":true,
      "double_jump":false,
+     "end_screen":"battery2.png",
      "tileset":"tileset2.png",
      "wall_jump":true
     },
@@ -816,6 +817,7 @@
      "background":"string",
      "dash":"bool",
      "double_jump":"bool",
+     "end_screen":"string",
      "tileset":"string",
      "wall_jump":"bool"
     },

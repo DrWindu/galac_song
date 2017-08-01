@@ -76,6 +76,7 @@ enum State {
 	STATE_DEATH,
 	STATE_FADE_IN,
 	STATE_FADE_OUT,
+	STATE_PAUSE,
 };
 
 
@@ -98,15 +99,17 @@ public:
 	int execSingle(const std::string& cmd, EntityRef self = EntityRef());
 	int exec(int argc, const char** argv, EntityRef self = EntityRef());
 
-	void setState(State state);
+	void setState(State state, State nextState = STATE_PLAY);
 
 	LevelSP registerLevel(const Path& level);
 	void loadLevel(const Path& level, const String& spawn = "spawn");
 	void setNextLevel(const Path& level, const String& spawn = "spawn");
 	void changeLevel(const Path& level, const String& spawn = "spawn");
 
-	void registerSound(const Path& sound);
+	void loadSound(const Path& sound);
 	void playSound(const Path& sound);
+	void loadMusic(const Path& sound);
+	void playMusic(const Path& music);
 
 	EntityRef getEntity(const String& name, const EntityRef& ancestor = EntityRef());
 	EntityRef createTrigger(EntityRef parent, const char* name, const Box2& box);
@@ -162,6 +165,7 @@ public:
 	Input*      _dashInput;
 
 	State    _state;
+	State    _nextState;
 	float    _transitionTime;
 
 	LevelMap _levelMap;
@@ -173,6 +177,7 @@ public:
 	EntityRef   _models;
 
 	EntityRef   _playerModel;
+	float       _baseMaxSpeed;
 	CharPhysicsParamsSP _playerPhysics;
 	EntityRef   _playerDeathModel;
 

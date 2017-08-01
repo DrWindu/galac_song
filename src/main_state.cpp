@@ -93,6 +93,8 @@ MainState::MainState(Game* game)
 	_commands.emplace("kill",       killCommand);
 	_commands.emplace("next_level", nextLevelCommand);
 	_commands.emplace("disable",    disableCommand);
+	_commands.emplace("no_jump",    noJumpCommand);
+	_commands.emplace("slow",       slowCommand);
 	_commands.emplace("credits",    creditsCommand);
 }
 
@@ -144,15 +146,22 @@ void MainState::initialize() {
 	registerLevel("lvl1.json");
 	registerLevel("lvl2.json");
 	registerLevel("lvl3.json");
+	registerLevel("lvl4.json");
 	setNextLevel("lvl1.json");
 
-	registerSound("arrival.wav");
-	registerSound("dash.wav");
-	registerSound("death.wav");
-	registerSound("departure.wav");
-	registerSound("jump.wav");
-	registerSound("land.wav");
-//	//loader()->load<MusicLoader>("music.ogg");
+	loadSound("arrival.wav");
+	loadSound("dash.wav");
+	loadSound("death.wav");
+	loadSound("departure.wav");
+	loadSound("jump.wav");
+	loadSound("land.wav");
+
+	loadMusic("ending.mp3");
+
+	loader()->load<ImageLoader>("battery1.png");
+	loader()->load<ImageLoader>("battery2.png");
+	loader()->load<ImageLoader>("battery3.png");
+	loader()->load<ImageLoader>("battery4.png");
 
 	loader()->waitAll();
 
@@ -161,7 +170,7 @@ void MainState::initialize() {
 		AssetSP levelAsset = assets()->getAsset(level->path());
 		TileMap& tileMap = assets()->getAspect<TileMapAspect>(levelAsset)->_get();
 
-		Path background = tileMap.properties().get("backgound", "background1.png").asString();
+		Path background = tileMap.properties().get("background", "background1.png").asString();
 		loader()->load<ImageLoader>(background);
 
 		Path tileset = tileMap.properties().get("tileset", "tileset.png").asString();
@@ -179,10 +188,12 @@ void MainState::initialize() {
 	float tileSize = TILE_SIZE * 2;
 
 	_playerPhysics->accelTime    =  0.1 * TICKS_PER_SEC;
-	_playerPhysics->maxSpeed     =  8   * tileSize * TICK_LENGTH_IN_SEC;
+	_baseMaxSpeed                =  8   * tileSize * TICK_LENGTH_IN_SEC;
+	_playerPhysics->maxSpeed     = _baseMaxSpeed;
 	_playerPhysics->playerAccel  = _playerPhysics->maxSpeed / _playerPhysics->accelTime;
 	_playerPhysics->airControl   =  0.5 * _playerPhysics->playerAccel;
 
+	_playerPhysics->jump         = true;
 	_playerPhysics->numJumps     = 1;
 	_playerPhysics->jumpTicks    = 10;
 //	_playerPhysics->gravity      = 32 * tileSize * TICK_LENGTH_IN_SEC * TICK_LENGTH_IN_SEC;
@@ -321,9 +332,10 @@ int MainState::exec(int argc, const char** argv, EntityRef self) {
 }
 
 
-void MainState::setState(State state) {
-	log().info("Change state: ", state);
+void MainState::setState(State state, State nextState) {
+	log().info("Change state: ", state, " -> ", nextState);
 	_state = state;
+	_nextState = nextState;
 	_transitionTime = 0;
 }
 
@@ -347,13 +359,28 @@ LevelSP MainState::registerLevel(const Path& path) {
 }
 
 
-void MainState::registerSound(const Path& sound) {
+void MainState::loadSound(const Path& sound) {
 	loader()->load<SoundLoader>(sound);
 }
 
 
 void MainState::playSound(const Path& sound) {
-	audio()->playSound(assets()->getAsset(sound));
+	AssetSP asset = assets()->getAsset(sound);
+	auto aspect = asset->aspect<SoundAspect>();
+	aspect->_get().setVolume(0.3);
+	audio()->playSound(asset);
+}
+
+
+void MainState::loadMusic(const Path& sound) {
+	loader()->load<MusicLoader>(sound);
+}
+
+
+void MainState::playMusic(const Path& sound) {
+	AssetSP asset = assets()->getAsset(sound);
+	audio()->setMusicVolume(0.5);
+	audio()->playMusic(assets()->getAsset(sound));
 }
 
 
@@ -397,11 +424,9 @@ void MainState::loadLevel(const Path& level, const String& spawn) {
 	_spawnName = spawn;
 	_level->start(_spawnName);
 
-	setState(STATE_FADE_IN);
+	setState(_nextState);
 
-	playSound("arrival.wav");
-
-	dumpEntityTree(log(), _entities.root());
+//	dumpEntityTree(log(), _entities.root());
 }
 
 
@@ -412,7 +437,18 @@ void MainState::setNextLevel(const Path& level, const String& spawn) {
 
 
 void MainState::changeLevel(const Path& level, const String& spawn) {
-	setState(STATE_FADE_OUT);
+	Path storyScreen = _level->tileMap()->properties().get("end_screen", "").asString();
+	SpriteComponent* fadeSprite = _sprites.get(_fadeOverlay);
+	if(storyScreen.empty()) {
+		fadeSprite->setTexture("white.png");
+		fadeSprite->setColor(Vector4(0, 0, 0, 0));
+		setState(STATE_FADE_OUT, STATE_PLAY);
+	}
+	else{
+		fadeSprite->setTexture(storyScreen);
+		fadeSprite->setColor(Vector4(1, 1, 1, 0));
+		setState(STATE_FADE_OUT, STATE_PAUSE);
+	}
 
 	setNextLevel(level, spawn);
 	playSound("departure.wav");
@@ -494,6 +530,8 @@ void MainState::killPlayer() {
 
 
 void MainState::startGame() {
+	setState(STATE_PLAY, STATE_FADE_IN);
+
 	loadLevel(_nextLevel, _nextLevelSpawn);
 	_nextLevel = Path();
 	_nextLevelSpawn.clear();
@@ -571,8 +609,14 @@ void MainState::updateTick() {
 				_nextLevelSpawn.clear();
 			}
 			else {
-				setState(STATE_PLAY);
+				setState(_nextState);
 			}
+		}
+	}
+	else if(_state == STATE_PAUSE) {
+		if(_jumpInput->isPressed()) {
+			setState(STATE_FADE_IN);
+			playSound("arrival.wav");
 		}
 	}
 
@@ -613,15 +657,24 @@ void MainState::updateFrame() {
 
 	_gui.placeAt(Vector2(viewBox.min().head<2>()));
 
-	if(_state == STATE_FADE_IN || _state == STATE_FADE_OUT) {
-		_fadeOverlay.setEnabled(true);
-		_fadeOverlay.transform()(0, 0) = screenSize(0);
-		_fadeOverlay.transform()(1, 1) = screenSize(1);
+	if(_state == STATE_FADE_IN || _state == STATE_FADE_OUT || _state == STATE_PAUSE) {
 		SpriteComponent* fadeSprite = _sprites.get(_fadeOverlay);
-		float alpha = _transitionTime / FADE_DURATION;
-		if(_state == STATE_FADE_IN)
-			alpha = 1 - alpha;
-		fadeSprite->setColor(Vector4(0, 0, 0, alpha));
+
+		_fadeOverlay.setEnabled(true);
+		_fadeOverlay.transform()(0, 0) = screenSize(0) / fadeSprite->texture()->get().width();
+		_fadeOverlay.transform()(1, 1) = screenSize(1) / fadeSprite->texture()->get().height();
+
+		Vector4 color = fadeSprite->color();
+		if(_state == STATE_PAUSE) {
+			color(3) = 1;
+		}
+		else {
+			color(3) = _transitionTime / FADE_DURATION;
+			if(_state == STATE_FADE_IN)
+				color(3) = 1 - color(3);
+		}
+
+		fadeSprite->setColor(color);
 	}
 	else {
 		_fadeOverlay.setEnabled(false);

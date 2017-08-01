@@ -4,6 +4,7 @@
   <property name="background" value="background3.png"/>
   <property name="dash" type="bool" value="false"/>
   <property name="double_jump" type="bool" value="false"/>
+  <property name="end_screen" value="battery3.png"/>
   <property name="tileset" value="tileset3.png"/>
   <property name="wall_jump" type="bool" value="true"/>
  </properties>

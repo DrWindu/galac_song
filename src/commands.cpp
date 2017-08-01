@@ -117,16 +117,53 @@ int disableCommand(MainState* state, EntityRef self, int argc, const char** argv
 }
 
 
+int noJumpCommand(MainState* state, EntityRef self, int argc, const char** argv) {
+	if(argc != 1) {
+		dbgLogger.warning(argv[0], ": wrong number of argument.");
+		return -2;
+	}
+
+	SpriteComponent* fadeSprite = state->_sprites.get(state->_fadeOverlay);
+	fadeSprite->setTexture("battery4.png");
+	fadeSprite->setColor(Vector4(1, 1, 1, 0));
+	state->setState(STATE_FADE_OUT, STATE_PAUSE);
+	state->playSound("departure.wav");
+
+	state->_playerPhysics->jump = false;
+
+	return 0;
+}
+
+
+int slowCommand(MainState* state, EntityRef self, int argc, const char** argv) {
+	if(argc != 2) {
+		dbgLogger.warning(argv[0], ": wrong number of argument.");
+		return -2;
+	}
+
+	state->_playerPhysics->maxSpeed = state->_playerPhysics->maxSpeed * atof(argv[1]);
+
+	return 0;
+}
+
+
+
 int creditsCommand(MainState* state, EntityRef self, int argc, const char** argv) {
 	if(argc != 1) {
 		dbgLogger.warning(argv[0], ": wrong number of argument.");
 		return -2;
 	}
 
-	state->game()->splashState()->setup(nullptr, "credits.png");
+	state->game()->splashState()->setNextState(nullptr);
+	state->game()->splashState()->addSplash("story_end.png");
+	state->game()->splashState()->addSplash("credits.png");
+
+	state->playMusic("ending.mp3");
+
+//	state->game()->splashState()->setup(nullptr, "credits.png");
 	state->game()->setNextState(state->game()->splashState());
 	state->quit();
-	state->execNext();
+//	state->execNext();
 
 	return 0;
 }

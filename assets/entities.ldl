@@ -55,6 +55,7 @@ gui = {
 				texture       = "white.png"
 				tile_grid     = Vector(1, 1)
 				tile_index    = 0
+				color         = Vector(0, 0, 0, 1)
 				anchor        = Vector(0, 0)
 				texture_flags = "nearest_no_mipmap | clamp"
 				blend         = "alpha"

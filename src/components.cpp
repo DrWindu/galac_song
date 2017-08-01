@@ -300,7 +300,7 @@ void CharacterComponentManager::updatePhysics() {
 			maxHeight = std::max(maxHeight, pos(1));
 			acceleration(1) = std::max(-p->gravity, -((p->wallJump && onWall)? p->maxWallFallSpeed: p->maxFallSpeed) - c.velocity(1));
 
-			bool justPressedJump = c.jumpPressed && !c.prevJumpPressed;
+			bool justPressedJump = p->jump && c.jumpPressed && !c.prevJumpPressed;
 			if(justPressedJump && (onGround || (p->wallJump && onWall) || c.jumpCount > 0)) {
 				maxHeight = 0;
 				c.velocity(1) = 0;

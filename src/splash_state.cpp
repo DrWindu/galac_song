@@ -53,7 +53,7 @@ SplashState::SplashState(Game* game)
 
       _skipInput(nullptr),
 
-      _skipTime(1),
+      _skipTime(1.e20),
       _nextState(nullptr) {
 
 	_entities.registerComponentManager(&_sprites);
@@ -77,6 +77,10 @@ void SplashState::initialize() {
 
 	_skipInput = _inputs.addInput("skip");
 	_inputs.mapScanCode(_skipInput, SDL_SCANCODE_ESCAPE);
+	_inputs.mapScanCode(_skipInput, SDL_SCANCODE_SPACE);
+	_inputs.mapScanCode(_skipInput, SDL_SCANCODE_RETURN);
+	_inputs.mapScanCode(_skipInput, SDL_SCANCODE_X);
+	_inputs.mapScanCode(_skipInput, SDL_SCANCODE_Z);
 
 	_splash = _entities.createEntity(_entities.root(), "splash_screen");
 	_splash.placeAt(Vector3(0, 0, 0));
@@ -112,6 +116,8 @@ void SplashState::run() {
 	_fpsTime  = sys()->getTimeNs();
 	_fpsCount = 0;
 
+	nextSplash();
+
 	do {
 		switch(_loop.nextEvent()) {
 		case InterpLoop::Tick:
@@ -138,20 +144,49 @@ Game* SplashState::game() {
 }
 
 
-void SplashState::setup(GameState* nextState, const Path& splashImage, float skipTime) {
-	_skipTime = skipTime;
+void SplashState::setNextState(GameState* nextState) {
 	_nextState = nextState;
-	if(!splashImage.empty()) {
-		SpriteComponent* splashSprite  = _sprites.get(_splash);
-		if(!splashSprite)
-			splashSprite = _sprites.addComponent(_splash);
-
-		splashSprite->setTexture(splashImage);
-		splashSprite->setTextureFlags(Texture::BILINEAR_NO_MIPMAP);
-
-		loader()->waitAll();
-	}
 }
+
+
+void SplashState::addSplash(const Path& splashImage) {
+	_splashQueue.emplace_back(splashImage);
+}
+
+
+bool SplashState::nextSplash() {
+	if(_splashQueue.empty())
+		return false;
+
+	SpriteComponent* splashSprite  = _sprites.get(_splash);
+	if(!splashSprite)
+		splashSprite = _sprites.addComponent(_splash);
+
+	splashSprite->setTexture(_splashQueue.front());
+	splashSprite->setTextureFlags(Texture::BILINEAR_NO_MIPMAP);
+
+	loader()->waitAll();
+
+	_splashQueue.pop_front();
+
+	return true;
+}
+
+
+//void SplashState::setup(GameState* nextState, const Path& splashImage, float skipTime) {
+//	_skipTime = skipTime;
+//	_nextState = nextState;
+//	if(!splashImage.empty()) {
+//		SpriteComponent* splashSprite  = _sprites.get(_splash);
+//		if(!splashSprite)
+//			splashSprite = _sprites.addComponent(_splash);
+
+//		splashSprite->setTexture(splashImage);
+//		splashSprite->setTextureFlags(Texture::BILINEAR_NO_MIPMAP);
+
+//		loader()->waitAll();
+//	}
+//}
 
 
 void SplashState::updateTick() {
@@ -161,13 +196,15 @@ void SplashState::updateTick() {
 	_skipTime -= float(_loop.tickDuration()) / float(ONE_SEC);
 
 	if (_skipTime <= 0
-	|| _skipInput->justPressed()
-	|| sys()->getKeyState(SDL_SCANCODE_SPACE)
-	|| sys()->getKeyState(SDL_SCANCODE_RETURN)) {
+	|| _skipInput->justPressed()) {
 		// ESC quite the game.
-		if(sys()->getKeyState(SDL_SCANCODE_ESCAPE))
+		if(sys()->getKeyState(SDL_SCANCODE_ESCAPE)) {
+			_splashQueue.clear();
 			_nextState = nullptr;
-		quit();
+		}
+
+		if(!nextSplash())
+			quit();
 	}
 
 	_entities.updateWorldTransforms();
