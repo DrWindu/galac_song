@@ -232,7 +232,7 @@ EntityRef Level::createTrigger(const Json::Value &obj, const std::string& name) 
 	Box2 box = objectBox(obj);
 	float margin = props.get("margin", 0).asFloat();
 	Vector2 half = box.sizes() / 2 + Vector2(margin, margin);
-	Box2 hitBox(-half, half);
+	AlignedBox2 hitBox(-half, half);
 
 	EntityRef entity = _mainState->createTrigger(_objects, name.c_str(), hitBox);
 	entity.placeAt((Vector3() << box.center(), 0.08).finished());

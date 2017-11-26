@@ -395,8 +395,7 @@ void CharacterComponentManager::processCollisions() {
 			continue;
 
 		CollisionComponent* coll = _mainState->_collisions.get(c.entity());
-		Shape wShape;
-		coll->shapes()[0]->setTransformed(wShape, c.entity().worldTransform().matrix());
+		Shape2D wShape = coll->shapes()[0].transformed(c.entity().worldTransform());
 		Box2 box = wShape.boundingBox();
 		box = Box2(box.min() - vSkin, box.max() + vSkin);
 

@@ -112,7 +112,7 @@ public:
 	void playMusic(const Path& music);
 
 	EntityRef getEntity(const String& name, const EntityRef& ancestor = EntityRef());
-	EntityRef createTrigger(EntityRef parent, const char* name, const Box2& box);
+	EntityRef createTrigger(EntityRef parent, const char* name, const AlignedBox2& box);
 
 	void updateTriggers(bool disableCmds = false);
 

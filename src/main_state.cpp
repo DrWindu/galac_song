@@ -464,11 +464,11 @@ EntityRef MainState::getEntity(const String& name, const EntityRef& ancestor) {
 }
 
 
-EntityRef MainState::createTrigger(EntityRef parent, const char* name, const Box2& box) {
+EntityRef MainState::createTrigger(EntityRef parent, const char* name, const AlignedBox2& box) {
 	EntityRef entity = _entities.createEntity(parent, name);
 
 	CollisionComponent* cc = _collisions.addComponent(entity);
-	cc->addShape(Shape::newAlignedBox(box));
+	cc->addShape(Shape2D(box));
 	cc->setHitMask(HIT_PLAYER | HIT_TRIGGER);
 	cc->setIgnoreMask(HIT_TRIGGER);
 
@@ -491,7 +491,6 @@ void MainState::updateTriggers(bool disableCmds) {
 	for(HitEvent hit: _collisions.hitEvents()) {
 		if(hit.entities[1] == _player) {
 			std::swap(hit.entities[0], hit.entities[1]);
-			hit.penetration = -hit.penetration;
 		}
 
 		if(hit.entities[0] == _player) {
