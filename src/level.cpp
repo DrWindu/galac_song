@@ -94,6 +94,11 @@ void Level::initialize() {
 	_levelRoot = _mainState->_entities.createEntity(_mainState->_scene, _path.utf8CStr());
 	_levelRoot.setEnabled(false);
 
+	_mainState->_collisions.setBounds(
+	            AlignedBox2(Vector2(0, 0),
+	                        Vector2(_tileMap->width(0)  * TILE_SIZE,
+	                                _tileMap->height(0) * TILE_SIZE)));
+
 	_baseLayer = createLayer(_tileMap->nLayers() - 1, "layer_base");
 	_objects = _mainState->_entities.createEntity(_levelRoot, "objects");
 
